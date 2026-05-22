@@ -1,0 +1,6 @@
+name,category,serialNumber,status,condition,totalQuantity,lowStockThreshold,type
+MacBook Pro M3 Max,Laptop,SN-APPLE-M3-9081,Available,New,1,0,Fixed
+ThinkPad E14,Laptop,SN-LENOVO-TP-4412,Available,Good,1,0,Fixed
+Dell 24 Inch Monitor,Monitor,SN-DELL-MON-3321,Available,New,1,0,Fixed
+Whiteboard Markers,Stationery,,Available,New,50,10,Consumable
+A4 Paper Rim Pack,Office Supply,,Available,New,20,5,Consumable

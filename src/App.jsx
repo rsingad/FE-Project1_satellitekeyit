@@ -17,8 +17,8 @@ import Requests from './pages/Requests';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AssetInventory from './pages/admin/AssetInventory';
 import AssetTimeline from './pages/admin/AssetTimeline';
-import RequestsQueue from './pages/admin/RequestsQueue';
 import EmployeeMatrix from './pages/admin/EmployeeMatrix';
+import EmployeeProfile from './pages/admin/EmployeeProfile';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
@@ -49,7 +49,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+
         {/* Root Redirect */}
         <Route path="/" element={<IndexRedirect />} />
 
@@ -67,6 +67,7 @@ function App() {
           <Route path="inventory/:id" element={<AssetTimeline />} />
           <Route path="requests" element={<Requests />} />
           <Route path="staff" element={<EmployeeMatrix />} />
+          <Route path="staff/:id" element={<EmployeeProfile />} />
         </Route>
       </Routes>
     </Router>

@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown } from 'lucide-react';
+import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown, CalendarClock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Requests = () => {
@@ -65,10 +65,12 @@ const Requests = () => {
 
     if (reqType === 'Non-Consumable') {
       const selectEl = e.target.elements.assetSelect;
-      if (!selectEl.value) {
-        return toast.error('Please select a specific asset to assign');
+      if (selectEl) {
+        if (!selectEl.value) {
+          return toast.error('Please manually select an asset to assign');
+        }
+        payload.assignedAssetId = selectEl.value;
       }
-      payload.assignedAssetId = selectEl.value;
     }
 
     try {
@@ -94,10 +96,21 @@ const Requests = () => {
   const handleReturn = async (id) => {
     try {
       await api.post(`/requests/${id}/return`, {});
-      toast.success('Asset returned successfully');
+      toast.success('Return initiated. Pending admin confirmation.');
       fetchRequests();
     } catch (error) {
-      toast.error('Failed to return asset');
+      toast.error('Failed to initiate return');
+    }
+  };
+
+  const handleConfirmReturn = async (id) => {
+    try {
+      await api.put(`/requests/${id}/confirm-return`, {});
+      toast.success('Return confirmed successfully');
+      fetchRequests();
+      fetchAvailableAssets();
+    } catch (error) {
+      toast.error('Failed to confirm return');
     }
   };
 
@@ -163,10 +176,36 @@ const Requests = () => {
               ) : (
                 requests.map(req => (
                   <tr key={req._id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-5">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Clock size={14} className="text-slate-400" />
-                        {new Date(req.requestDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <td className="p-5 min-w-[150px]">
+                      <div className="flex flex-col gap-1.5 text-xs text-slate-600">
+                        <div className="flex items-center gap-2" title="Requested Date">
+                          <Clock size={14} className="text-slate-400 shrink-0" />
+                          <span><span className="font-medium">Req:</span> {new Date(req.requestDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        {req.expectedReturnDate && (
+                          <div className="flex items-center gap-2 text-amber-700" title="Expected Return Date">
+                            <CalendarClock size={14} className="text-amber-500 shrink-0" />
+                            <span><span className="font-medium">Due:</span> {new Date(req.expectedReturnDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          </div>
+                        )}
+                        {req.assignedDate && (
+                          <div className="flex items-center gap-2 text-emerald-700" title="Assigned Date">
+                            <Check size={14} className="text-emerald-500 shrink-0" />
+                            <span>
+                              <span className="font-medium">Assigned:</span> {new Date(req.assignedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {req.approvedBy && <span className="text-emerald-600/70 ml-1">by {req.approvedBy.name}</span>}
+                            </span>
+                          </div>
+                        )}
+                        {req.returnDate && (
+                          <div className="flex items-center gap-2 text-purple-700" title="Returned Date">
+                            <Undo2 size={14} className="text-purple-500 shrink-0" />
+                            <span>
+                              <span className="font-medium">Returned:</span> {new Date(req.returnDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {req.returnConfirmedBy && <span className="text-purple-600/70 ml-1">by {req.returnConfirmedBy.name}</span>}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     {(user?.role === 'Admin' || user?.role === 'Manager') && (
@@ -188,8 +227,9 @@ const Requests = () => {
                     </td>
                     <td className="p-5">
                       <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider inline-block ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                          req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                            req.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                        req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                          req.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                            req.status === 'Pending Return' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
                               'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
                         {req.status}
@@ -199,10 +239,10 @@ const Requests = () => {
                       {req.status === 'Pending' && (user?.role === 'Admin' || user?.role === 'Manager') ? (
                         <div className="flex justify-end gap-3">
                           <form onSubmit={(e) => handleApprove(req._id, req.assetType, e)} className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                            {req.assetType === 'Non-Consumable' && (
+                            {req.assetType === 'Non-Consumable' && (!req.requestedAssetId || req.requestedAssetId.status !== 'Available') && (
                               <div className="relative">
-                                <select name="assetSelect" className="text-xs border-none bg-transparent font-medium text-slate-700 focus:ring-0 appearance-none pr-6 pl-2 py-1 cursor-pointer">
-                                  <option value="">Assign hardware...</option>
+                                <select name="assetSelect" className="text-xs border-none bg-transparent font-medium text-slate-700 focus:ring-0 appearance-none pr-6 pl-2 py-1 cursor-pointer max-w-[150px]">
+                                  <option value="">{req.requestedAssetId ? 'Requested Item Unavailable. Select Alternative...' : 'Assign manually...'}</option>
                                   {availableAssets.filter(a => a.name.toLowerCase().includes(req.assetName.toLowerCase()) || req.assetName.toLowerCase().includes(a.name.toLowerCase())).map(a => (
                                     <option key={a._id} value={a._id}>{a.name} ({a.serialNumber})</option>
                                   ))}
@@ -230,6 +270,15 @@ const Requests = () => {
                           className="text-xs font-bold flex items-center justify-end w-full gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors ml-auto max-w-max"
                         >
                           <Undo2 size={14} /> Return Item
+                        </motion.button>
+                      ) : req.status === 'Pending Return' && (user?.role === 'Admin' || user?.role === 'Manager') ? (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleConfirmReturn(req._id)}
+                          className="text-xs font-bold flex items-center justify-end w-full gap-1.5 text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors ml-auto max-w-max"
+                        >
+                          <Check size={14} /> Confirm Return
                         </motion.button>
                       ) : (
                         <span className="text-slate-300 text-sm font-medium">-</span>

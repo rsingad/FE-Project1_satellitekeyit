@@ -17,6 +17,7 @@ const Assets = () => {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestAsset, setRequestAsset] = useState(null);
   const [requestQuantity, setRequestQuantity] = useState(1);
+  const [expectedReturnDate, setExpectedReturnDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ const Assets = () => {
   const openRequestModal = (asset) => {
     setRequestAsset(asset);
     setRequestQuantity(1);
+    setExpectedReturnDate('');
     setIsRequestModalOpen(true);
   };
 
@@ -47,7 +49,9 @@ const Assets = () => {
       await api.post('/requests', {
         assetType: requestAsset.type,
         assetName: requestAsset.name,
-        quantity: requestAsset.type === 'Consumable' ? requestQuantity : 1
+        quantity: requestAsset.type === 'Consumable' ? requestQuantity : 1,
+        requestedAssetId: requestAsset._id,
+        expectedReturnDate: requestAsset.type === 'Non-Consumable' ? expectedReturnDate : null
       });
       toast.success(`${requestAsset.name} requested successfully! Check 'Requests' tab for status.`);
       setIsRequestModalOpen(false);
@@ -256,6 +260,20 @@ const Assets = () => {
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow text-sm" 
                         value={requestQuantity} 
                         onChange={e => setRequestQuantity(Number(e.target.value))} 
+                      />
+                    </motion.div>
+                  )}
+
+                  {requestAsset.type === 'Non-Consumable' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Expected Return Date</label>
+                      <input 
+                        type="date" 
+                        required 
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow text-sm" 
+                        value={expectedReturnDate} 
+                        onChange={e => setExpectedReturnDate(e.target.value)} 
                       />
                     </motion.div>
                   )}

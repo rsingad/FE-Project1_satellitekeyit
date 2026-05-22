@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [metricsData, setMetricsData] = useState({
+    totalAssets: 0,
     totalFixedAssets: 0,
+    totalConsumables: 0,
     lowStockAlerts: 0,
-    overdueReturns: 0
+    overdueReturns: 0,
+    conditionBreakdown: [],
+    recentActivity: [],
+    recentRequests: []
   });
 
   useEffect(() => {
@@ -24,9 +30,10 @@ export default function AdminDashboard() {
   }, []);
 
   const metrics = [
-    { title: 'Total Fixed Assets', value: metricsData.totalFixedAssets, change: 'Active catalog', icon: BoxIcon, color: 'from-blue-500 to-cyan-400' },
-    { title: 'Low Stock Alerts', value: metricsData.lowStockAlerts, change: 'Consumables critical', icon: AlertIcon, color: 'from-amber-400 to-orange-500' },
-    { title: 'Overdue Returns', value: metricsData.overdueReturns, change: 'Requires immediate action', icon: ClockIcon, color: 'from-rose-400 to-red-500' },
+    { title: 'Total Assets', value: metricsData.totalAssets || 0, change: 'Entire catalog', icon: BoxIcon, color: 'from-blue-500 to-cyan-400', link: '/admin/inventory' },
+    { title: 'Fixed Assets', value: metricsData.totalFixedAssets || 0, change: 'Non-consumable', icon: BoxIcon, color: 'from-indigo-500 to-purple-500', link: '/admin/inventory?tab=Fixed' },
+    { title: 'Consumables', value: metricsData.totalConsumables || 0, change: 'Expendable items', icon: CheckIcon, color: 'from-emerald-400 to-teal-500', link: '/admin/inventory?tab=Consumables' },
+    { title: 'Low Stock Alerts', value: metricsData.lowStockAlerts || 0, change: 'Requires restock', icon: AlertIcon, color: 'from-amber-400 to-orange-500', link: '/admin/inventory?tab=Consumables&filter=LowStock' },
   ];
 
   return (
@@ -47,40 +54,106 @@ export default function AdminDashboard() {
         </motion.button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {metrics.map((metric, idx) => (
-          <motion.div
-            key={metric.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden group"
-          >
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${metric.color} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110`} />
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-slate-500 font-medium text-sm mb-1">{metric.title}</p>
-                <h3 className="text-3xl font-bold text-slate-800">{metric.value}</h3>
+          <Link to={metric.link} key={metric.title}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200 }}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all hover:-translate-y-1 relative overflow-hidden group h-full cursor-pointer"
+            >
+              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${metric.color} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110`} />
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-slate-500 font-medium text-sm mb-1">{metric.title}</p>
+                  <h3 className="text-3xl font-bold text-slate-800">{metric.value}</h3>
+                </div>
+                <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.color} text-white shadow-sm`}>
+                  <metric.icon />
+                </div>
               </div>
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.color} text-white shadow-sm`}>
-                <metric.icon />
+              <div className="mt-4 pt-4 border-t border-slate-50">
+                <span className="text-xs font-semibold text-slate-400">{metric.change}</span>
               </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-slate-50">
-              <span className="text-xs font-semibold text-slate-400">{metric.change}</span>
-            </div>
-          </motion.div>
+            </motion.div>
+          </Link>
         ))}
       </div>
 
-      {/* Placeholder for future charts or tables */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ActivityIcon />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        {/* Recent Activity Feed */}
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 min-h-[400px]">
+          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><ActivityIcon className="text-indigo-500 w-6 h-6"/> Recent Activity</h3>
+          <div className="space-y-6">
+            {metricsData.recentActivity?.map(log => (
+              <div key={log._id} className="flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600 font-bold shrink-0">
+                  {log.performedBy?.name?.charAt(0) || '?'}
+                </div>
+                <div>
+                  <p className="text-sm text-slate-800 font-medium">{log.details}</p>
+                  <p className="text-xs text-slate-500 mt-1">{new Date(log.timestamp).toLocaleString()} • {log.performedBy?.name}</p>
+                </div>
+              </div>
+            ))}
+            {(!metricsData.recentActivity || metricsData.recentActivity.length === 0) && (
+              <p className="text-slate-500 text-sm">No recent activity.</p>
+            )}
           </div>
-          <h3 className="text-lg font-semibold text-slate-700">Activity Overview</h3>
-          <p className="text-slate-400 text-sm mt-1 max-w-sm">Detailed allocation charts and operational metrics will be populated here.</p>
+        </div>
+
+        {/* Condition Breakdown */}
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 min-h-[400px]">
+          <h3 className="text-xl font-bold text-slate-800 mb-6">Asset Health Breakdown</h3>
+          <div className="space-y-4">
+            {metricsData.conditionBreakdown?.map(cond => {
+              const condTab = ['Scrapped', 'Under Repair'].includes(cond._id) ? 'Repair' : 'Fixed';
+              return (
+                <Link to={`/admin/inventory?tab=${condTab}&condition=${encodeURIComponent(cond._id)}`} key={cond._id} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl cursor-pointer">
+                  <span className="font-semibold text-slate-700">{cond._id || 'Unknown'}</span>
+                  <span className="text-lg font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">{cond.count}</span>
+                </Link>
+              );
+            })}
+            {(!metricsData.conditionBreakdown || metricsData.conditionBreakdown.length === 0) && (
+              <p className="text-slate-500 text-sm">No condition data available.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Requests */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 mb-10">
+        <h3 className="text-xl font-bold text-slate-800 mb-6">Recent Workspace Requests</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="pb-4">Employee</th>
+                <th className="pb-4">Asset</th>
+                <th className="pb-4">Status</th>
+                <th className="pb-4">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {metricsData.recentRequests?.map(req => (
+                <tr key={req._id}>
+                  <td className="py-4 font-medium text-slate-800">{req.requester?.name || 'Unknown'}</td>
+                  <td className="py-4 text-slate-600">{req.assetName}</td>
+                  <td className="py-4">
+                    <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold uppercase ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700' : req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                      {req.status}
+                    </span>
+                  </td>
+                  <td className="py-4 text-sm text-slate-500">{new Date(req.requestDate).toLocaleDateString()}</td>
+                </tr>
+              ))}
+              {(!metricsData.recentRequests || metricsData.recentRequests.length === 0) && (
+                <tr><td colSpan="4" className="py-6 text-center text-slate-500">No recent requests.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
