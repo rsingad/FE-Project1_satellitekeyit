@@ -1,9 +1,10 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown, CalendarClock } from 'lucide-react';
+import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown, CalendarClock, ShieldAlert, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import gsap from 'gsap';
 
 const Requests = () => {
   const { user } = useContext(AuthContext);
@@ -11,12 +12,23 @@ const Requests = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableAssets, setAvailableAssets] = useState([]);
+  const backgroundRef = useRef(null);
 
   const [newReq, setNewReq] = useState({
     assetType: 'Consumable',
     assetName: '',
     quantity: 1
   });
+
+  // GSAP Background Animation
+  useEffect(() => {
+    let ctx = gsap.context(() => {
+      gsap.to(".blob1", { y: "random(-100, 100)", x: "random(-100, 100)", duration: 10, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".blob2", { y: "random(-150, 150)", x: "random(-100, 100)", duration: 14, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".blob3", { scale: 1.2, duration: 8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    }, backgroundRef);
+    return () => ctx.revert();
+  }, []);
 
   useEffect(() => {
     fetchRequests();
@@ -50,7 +62,9 @@ const Requests = () => {
     e.preventDefault();
     try {
       await api.post('/requests', newReq);
-      toast.success('Request submitted successfully');
+      toast.success('Request submitted successfully', {
+        style: { borderRadius: '12px', background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+      });
       setIsModalOpen(false);
       setNewReq({ assetType: 'Consumable', assetName: '', quantity: 1 });
       fetchRequests();
@@ -67,7 +81,7 @@ const Requests = () => {
       const selectEl = e.target.elements.assetSelect;
       if (selectEl) {
         if (!selectEl.value) {
-          return toast.error('Please manually select an asset to assign');
+          return toast.error('Please select an asset ID to assign');
         }
         payload.assignedAssetId = selectEl.value;
       }
@@ -75,7 +89,9 @@ const Requests = () => {
 
     try {
       await api.put(`/requests/${id}/approve`, payload);
-      toast.success('Request approved successfully');
+      toast.success('Clearance Granted', {
+        style: { borderRadius: '12px', background: '#064e3b', color: '#fff', border: '1px solid #059669' }
+      });
       fetchRequests();
       fetchAvailableAssets();
     } catch (error) {
@@ -86,7 +102,9 @@ const Requests = () => {
   const handleReject = async (id) => {
     try {
       await api.put(`/requests/${id}/reject`, {});
-      toast.success('Request rejected');
+      toast.error('Request Denied', {
+        style: { borderRadius: '12px', background: '#7f1d1d', color: '#fff', border: '1px solid #dc2626' }
+      });
       fetchRequests();
     } catch (error) {
       toast.error('Failed to reject');
@@ -96,7 +114,9 @@ const Requests = () => {
   const handleReturn = async (id) => {
     try {
       await api.post(`/requests/${id}/return`, {});
-      toast.success('Return initiated. Pending admin confirmation.');
+      toast.success('Return initiated. Pending admin confirmation.', {
+        style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+      });
       fetchRequests();
     } catch (error) {
       toast.error('Failed to initiate return');
@@ -106,7 +126,7 @@ const Requests = () => {
   const handleConfirmReturn = async (id) => {
     try {
       await api.put(`/requests/${id}/confirm-return`, {});
-      toast.success('Return confirmed successfully');
+      toast.success('Return confirmed securely');
       fetchRequests();
       fetchAvailableAssets();
     } catch (error) {
@@ -114,241 +134,305 @@ const Requests = () => {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+      case 'Approved': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+      case 'Rejected': return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+      case 'Pending Return': return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+      case 'Returned': return 'bg-slate-500/10 text-slate-400 border-slate-500/30';
+      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/30';
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            {user?.role === 'Admin' || user?.role === 'Manager' ? 'Workspace Requests' : 'My Requests'}
-          </h1>
-          <p className="text-slate-500 mt-1">
-            {user?.role === 'Employee' ? 'Track and manage your asset requests.' : 'Review and process employee requests.'}
-          </p>
-        </div>
-        {user?.role === 'Employee' && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20 font-medium"
+    <div ref={backgroundRef} className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-cyan-500/30 overflow-hidden relative">
+      
+      {/* Background Ambience */}
+      <div className="blob1 absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
+      <div className="blob2 absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
+      <div className="blob3 absolute top-[30%] left-[40%] w-[30vw] h-[30vw] rounded-full bg-purple-900/10 blur-[100px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] opacity-30 pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Inbox className="text-cyan-400" size={28} />
+              <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-500 tracking-tight">
+                {user?.role === 'Admin' || user?.role === 'Manager' ? 'Authorization Logs' : 'My Requisitions'}
+              </h1>
+            </div>
+            <p className="text-slate-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span>
+              {user?.role === 'Employee' ? 'Track and manage your asset requests.' : 'Review and process clearance requests.'}
+            </p>
+          </div>
+          
+          {user?.role === 'Employee' && (
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(6, 182, 212, 0.3)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg font-bold border border-white/10"
+            >
+              <Send size={18} />
+              New Requisition
+            </motion.button>
+          )}
+        </motion.div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="relative w-24 h-24">
+              <div className="absolute inset-0 border-4 border-t-cyan-400 border-r-purple-500 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-2 border-4 border-l-cyan-400 border-b-purple-500 border-t-transparent border-r-transparent rounded-full animate-[spin_1.5s_linear_infinite_reverse]"></div>
+            </div>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] relative"
           >
-            <Send size={18} />
-            New Request
-          </motion.button>
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-xs uppercase tracking-widest font-bold">
+                    <th className="p-5 font-mono">Timeline / Dates</th>
+                    {user?.role !== 'Employee' && <th className="p-5 font-mono">Identity</th>}
+                    <th className="p-5 font-mono">Asset Target</th>
+                    <th className="p-5 font-mono">Type / Qty</th>
+                    <th className="p-5 font-mono">Clearance Status</th>
+                    <th className="p-5 text-right font-mono">Directives</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {requests.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="p-16 text-center text-slate-500">
+                        <Inbox className="mx-auto h-12 w-12 text-slate-600 mb-4 opacity-50" />
+                        <p className="font-mono text-sm">No authorization logs found in registry.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    requests.map((req) => (
+                      <tr key={req._id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="p-5 whitespace-nowrap text-slate-300 text-xs font-mono space-y-1.5">
+                          <div className="flex items-center gap-2" title="Requested On">
+                            <Clock size={12} className="text-cyan-500/50" />
+                            Req: {new Date(req.requestDate).toLocaleDateString('en-GB')}
+                          </div>
+                          {req.expectedReturnDate && (
+                            <div className="flex items-center gap-2 text-slate-400" title="Expected Return">
+                              <CalendarClock size={12} className="text-amber-500/50" />
+                              Exp: {new Date(req.expectedReturnDate).toLocaleDateString('en-GB')}
+                            </div>
+                          )}
+                          {req.assignedDate && (
+                            <div className="flex items-center gap-1.5 text-emerald-400/80" title={`Assigned/Approved by ${req.approvedBy?.name || 'System'}`}>
+                              <Check size={12} className="text-emerald-500/50 shrink-0" />
+                              Alloc: {new Date(req.assignedDate).toLocaleDateString('en-GB')}
+                              <span className="text-[9px] uppercase tracking-wider opacity-80 bg-emerald-500/20 px-1.5 py-0.5 rounded ml-1 truncate max-w-[80px] border border-emerald-500/20">
+                                BY {req.approvedBy?.name?.split(' ')[0] || 'ADMIN'}
+                              </span>
+                            </div>
+                          )}
+                          {req.returnDate && (
+                            <div className="flex items-center gap-1.5 text-blue-400/80" title={`Return confirmed by ${req.returnConfirmedBy?.name || 'System'}`}>
+                              <Undo2 size={12} className="text-blue-500/50 shrink-0" />
+                              Ret: {new Date(req.returnDate).toLocaleDateString('en-GB')}
+                              <span className="text-[9px] uppercase tracking-wider opacity-80 bg-blue-500/20 px-1.5 py-0.5 rounded ml-1 truncate max-w-[80px] border border-blue-500/20">
+                                BY {req.returnConfirmedBy?.name?.split(' ')[0] || 'ADMIN'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        
+                        {user?.role !== 'Employee' && (
+                          <td className="p-5">
+                            <div className="font-bold text-white text-sm">{req.user?.name}</div>
+                            <div className="text-xs text-slate-500 font-mono">{req.user?.email}</div>
+                          </td>
+                        )}
+                        
+                        <td className="p-5">
+                          <div className="font-bold text-slate-200">{req.assetName}</div>
+                          {req.assignedAssetId && (
+                            <div className="text-xs text-cyan-400 font-mono mt-1 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded inline-block">
+                              ID: {req.assignedAssetId.serialNumber || req.assignedAssetId}
+                            </div>
+                          )}
+                        </td>
+                        
+                        <td className="p-5">
+                          <span className="text-xs text-slate-300 font-mono bg-white/5 px-2 py-1 rounded border border-white/10">
+                            {req.assetType}
+                          </span>
+                          <span className="ml-2 text-sm text-slate-400 font-bold">x{req.quantity}</span>
+                        </td>
+                        
+                        <td className="p-5">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(req.status)} shadow-sm`}>
+                            {req.status === 'Pending' && <Clock size={10} />}
+                            {req.status === 'Approved' && <Check size={10} />}
+                            {req.status === 'Rejected' && <X size={10} />}
+                            {req.status}
+                          </span>
+                        </td>
+                        
+                        <td className="p-5 text-right space-x-2">
+                          {(user?.role === 'Admin' || user?.role === 'Manager') && req.status === 'Pending' && (
+                            <form onSubmit={(e) => handleApprove(req._id, req.assetType, e)} className="inline-flex items-center gap-2">
+                              {/* Only show "Link Hardware" if the user didn't request a specific asset from the catalog */}
+                              {req.assetType === 'Non-Consumable' && !req.requestedAssetId && (
+                                <div className="relative w-32">
+                                  <select 
+                                    name="assetSelect" 
+                                    required
+                                    className="w-full appearance-none bg-black/40 border border-white/10 text-white text-xs px-2 py-1.5 rounded focus:ring-1 focus:ring-cyan-500 focus:outline-none"
+                                    defaultValue=""
+                                  >
+                                    <option value="" disabled>Link Hardware</option>
+                                    {availableAssets.map(a => (
+                                      <option key={a._id} value={a._id}>{a.serialNumber}</option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown size={12} className="absolute right-2 top-2 text-slate-500 pointer-events-none" />
+                                </div>
+                              )}
+                              {/* If requestedAssetId exists, show a badge indicating which asset will be approved */}
+                              {req.assetType === 'Non-Consumable' && req.requestedAssetId && (
+                                <div className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20" title="Auto-linking specific requested asset">
+                                  Pre-Linked
+                                </div>
+                              )}
+                              
+                              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} type="submit" className="p-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/20" title="Authorize">
+                                <Check size={16} />
+                              </motion.button>
+                              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} type="button" onClick={() => handleReject(req._id)} className="p-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded hover:bg-rose-500/20" title="Deny">
+                                <X size={16} />
+                              </motion.button>
+                            </form>
+                          )}
+
+                          {user?.role === 'Admin' && req.status === 'Pending Return' && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                              onClick={() => handleConfirmReturn(req._id)}
+                              className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold hover:bg-emerald-500/20 uppercase tracking-wider flex items-center gap-1 ml-auto"
+                            >
+                              <Check size={14} /> Verify Return
+                            </motion.button>
+                          )}
+
+                          {user?.role === 'Employee' && req.status === 'Approved' && req.assetType === 'Non-Consumable' && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                              onClick={() => handleReturn(req._id)}
+                              className="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded text-xs font-bold hover:bg-blue-500/20 uppercase tracking-wider flex items-center gap-1 ml-auto"
+                            >
+                              <Undo2 size={14} /> Init Return
+                            </motion.button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
         )}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-semibold">
-                <th className="p-5">Date</th>
-                {(user?.role === 'Admin' || user?.role === 'Manager') && (
-                  <th className="p-5">Requester</th>
-                )}
-                <th className="p-5">Asset Details</th>
-                <th className="p-5">Status</th>
-                <th className="p-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="p-8 text-center">
-                    <div className="animate-pulse flex flex-col items-center gap-3">
-                      <div className="h-8 w-8 bg-slate-200 rounded-full"></div>
-                      <div className="h-4 w-24 bg-slate-200 rounded"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : requests.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-500">
-                    <Inbox className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                    <p className="text-lg font-medium text-slate-700">No requests found</p>
-                  </td>
-                </tr>
-              ) : (
-                requests.map(req => (
-                  <tr key={req._id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-5 min-w-[150px]">
-                      <div className="flex flex-col gap-1.5 text-xs text-slate-600">
-                        <div className="flex items-center gap-2" title="Requested Date">
-                          <Clock size={14} className="text-slate-400 shrink-0" />
-                          <span><span className="font-medium">Req:</span> {new Date(req.requestDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        </div>
-                        {req.expectedReturnDate && (
-                          <div className="flex items-center gap-2 text-amber-700" title="Expected Return Date">
-                            <CalendarClock size={14} className="text-amber-500 shrink-0" />
-                            <span><span className="font-medium">Due:</span> {new Date(req.expectedReturnDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                          </div>
-                        )}
-                        {req.assignedDate && (
-                          <div className="flex items-center gap-2 text-emerald-700" title="Assigned Date">
-                            <Check size={14} className="text-emerald-500 shrink-0" />
-                            <span>
-                              <span className="font-medium">Assigned:</span> {new Date(req.assignedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                              {req.approvedBy && <span className="text-emerald-600/70 ml-1">by {req.approvedBy.name}</span>}
-                            </span>
-                          </div>
-                        )}
-                        {req.returnDate && (
-                          <div className="flex items-center gap-2 text-purple-700" title="Returned Date">
-                            <Undo2 size={14} className="text-purple-500 shrink-0" />
-                            <span>
-                              <span className="font-medium">Returned:</span> {new Date(req.returnDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                              {req.returnConfirmedBy && <span className="text-purple-600/70 ml-1">by {req.returnConfirmedBy.name}</span>}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    {(user?.role === 'Admin' || user?.role === 'Manager') && (
-                      <td className="p-5">
-                        <div className="text-sm font-bold text-slate-800">{req.requester?.name}</div>
-                        <div className="text-xs text-slate-500">{req.requester?.email}</div>
-                      </td>
-                    )}
-                    <td className="p-5">
-                      <div className="text-sm font-bold text-slate-900">{req.assetName}</div>
-                      <div className="text-xs font-medium text-slate-500 mt-0.5">
-                        {req.assetType} {req.assetType === 'Consumable' && <span className="text-primary-600 ml-1">× {req.quantity}</span>}
-                      </div>
-                      {req.assignedAssetId && (
-                        <div className="text-xs font-mono text-slate-400 mt-1 bg-slate-100 inline-block px-1.5 py-0.5 rounded">
-                          SN: {req.assignedAssetId.serialNumber}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-5">
-                      <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider inline-block ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                        req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                          req.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                            req.status === 'Pending Return' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                              'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}>
-                        {req.status}
-                      </span>
-                    </td>
-                    <td className="p-5 text-right">
-                      {req.status === 'Pending' && (user?.role === 'Admin' || user?.role === 'Manager') ? (
-                        <div className="flex justify-end gap-3">
-                          <form onSubmit={(e) => handleApprove(req._id, req.assetType, e)} className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                            {req.assetType === 'Non-Consumable' && (!req.requestedAssetId || req.requestedAssetId.status !== 'Available') && (
-                              <div className="relative">
-                                <select name="assetSelect" className="text-xs border-none bg-transparent font-medium text-slate-700 focus:ring-0 appearance-none pr-6 pl-2 py-1 cursor-pointer max-w-[150px]">
-                                  <option value="">{req.requestedAssetId ? 'Requested Item Unavailable. Select Alternative...' : 'Assign manually...'}</option>
-                                  {availableAssets.filter(a => a.name.toLowerCase().includes(req.assetName.toLowerCase()) || req.assetName.toLowerCase().includes(a.name.toLowerCase())).map(a => (
-                                    <option key={a._id} value={a._id}>{a.name} ({a.serialNumber})</option>
-                                  ))}
-                                  {availableAssets.length > 0 && <option disabled>──────────</option>}
-                                  {availableAssets.map(a => (
-                                    <option key={a._id} value={a._id}>{a.name} ({a.serialNumber})</option>
-                                  ))}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-2 top-1.5 text-slate-400 pointer-events-none" />
-                              </div>
-                            )}
-                            <button type="submit" title="Approve" className="p-1.5 bg-emerald-500 text-white rounded-md shadow-sm hover:bg-emerald-600 transition-colors flex items-center gap-1 text-xs font-bold px-2">
-                              <Check size={14} /> Approve
-                            </button>
-                          </form>
-                          <button onClick={() => handleReject(req._id)} title="Reject" className="p-2 bg-white text-rose-500 border border-rose-200 rounded-lg shadow-sm hover:bg-rose-50 hover:border-rose-300 transition-colors">
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : req.status === 'Approved' && req.assetType === 'Non-Consumable' && user?.role === 'Employee' ? (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleReturn(req._id)}
-                          className="text-xs font-bold flex items-center justify-end w-full gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors ml-auto max-w-max"
-                        >
-                          <Undo2 size={14} /> Return Item
-                        </motion.button>
-                      ) : req.status === 'Pending Return' && (user?.role === 'Admin' || user?.role === 'Manager') ? (
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleConfirmReturn(req._id)}
-                          className="text-xs font-bold flex items-center justify-end w-full gap-1.5 text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors ml-auto max-w-max"
-                        >
-                          <Check size={14} /> Confirm Return
-                        </motion.button>
-                      ) : (
-                        <span className="text-slate-300 text-sm font-medium">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-
-      {/* New Request Modal */}
+      {/* Cyberpunk New Request Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] w-full max-w-md rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-cyan-500/30"
             >
-              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="bg-primary-100 p-1.5 rounded-lg text-primary-600">
-                    <Send size={18} />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-800">Request Asset</h2>
-                </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500"></div>
+              
+              <div className="p-6 sm:p-8">
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                >
                   <X size={20} />
                 </button>
-              </div>
 
-              <div className="p-6">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                    <ShieldAlert size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Manual Requisition</h2>
+                    <p className="text-sm text-slate-400 font-medium">Submit raw request to system</p>
+                  </div>
+                </div>
+
                 <form onSubmit={handleSubmitRequest} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Asset Type</label>
-                    <div className="relative">
-                      <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow text-sm appearance-none" value={newReq.assetType} onChange={e => setNewReq({ ...newReq, assetType: e.target.value })}>
-                        <option value="Consumable">Consumable (e.g., Markers, Notebook)</option>
-                        <option value="Non-Consumable">Hardware (e.g., Laptop, Mouse)</option>
-                      </select>
-                      <ChevronDown size={16} className="absolute right-4 top-3 text-slate-500 pointer-events-none" />
-                    </div>
+                    <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Asset Class</label>
+                    <select
+                      className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono appearance-none"
+                      value={newReq.assetType}
+                      onChange={(e) => setNewReq({ ...newReq, assetType: e.target.value })}
+                    >
+                      <option value="Consumable" className="bg-slate-900">Consumable (Stock)</option>
+                      <option value="Non-Consumable" className="bg-slate-900">Non-Consumable (Hardware)</option>
+                    </select>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Asset Name</label>
-                    <input required type="text" placeholder="What do you need?" className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow text-sm" value={newReq.assetName} onChange={e => setNewReq({ ...newReq, assetName: e.target.value })} />
+                    <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Target Identifier</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. ThinkPad T14 / Wireless Mouse"
+                      className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+                      value={newReq.assetName}
+                      onChange={(e) => setNewReq({ ...newReq, assetName: e.target.value })}
+                    />
                   </div>
-
                   {newReq.assetType === 'Consumable' && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Quantity Required</label>
-                      <input type="number" min="1" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow text-sm" value={newReq.quantity} onChange={e => setNewReq({ ...newReq, quantity: Number(e.target.value) })} />
-                    </motion.div>
+                    <div>
+                      <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Quantity</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+                        value={newReq.quantity}
+                        onChange={(e) => setNewReq({ ...newReq, quantity: Number(e.target.value) })}
+                      />
+                    </div>
                   )}
 
-                  <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-6">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-                    <button type="submit" className="px-5 py-2.5 text-sm font-semibold bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20">Submit Request</button>
+                  <div className="pt-6">
+                    <motion.button
+                      whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(6, 182, 212, 0.4)" }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      className="w-full flex justify-center items-center gap-2 py-3.5 px-4 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg transition-all relative overflow-hidden group/submit"
+                    >
+                      <div className="absolute inset-0 -translate-x-full group-hover/submit:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                      <span className="relative z-10 flex items-center gap-2">
+                        Transmit Request <Send size={16} />
+                      </span>
+                    </motion.button>
                   </div>
                 </form>
               </div>
@@ -356,6 +440,7 @@ const Requests = () => {
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 };

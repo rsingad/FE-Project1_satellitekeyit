@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import { Sparkles, Upload, Plus, Edit, Trash2, AlertTriangle, X, Check, Copy, PackageSearch } from 'lucide-react';
+import gsap from 'gsap';
 
 const TABS = ['Fixed Assets', 'Consumables', 'Repair & Disposed'];
 
@@ -22,6 +24,17 @@ export default function AssetInventory() {
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState(null);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isSmartImportModalOpen, setIsSmartImportModalOpen] = useState(false);
+  const backgroundRef = useRef(null);
+
+  // GSAP Background Animation
+  useEffect(() => {
+    let ctx = gsap.context(() => {
+      gsap.to(".blob1", { y: "random(-100, 100)", x: "random(-100, 100)", duration: 10, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".blob2", { y: "random(-150, 150)", x: "random(-100, 100)", duration: 14, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      gsap.to(".blob3", { scale: 1.2, duration: 8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    }, backgroundRef);
+    return () => ctx.revert();
+  }, []);
 
   const fetchAssets = async () => {
     try {
@@ -47,12 +60,16 @@ export default function AssetInventory() {
 
   const handleDelete = async (id, status) => {
     if (status === 'Allocated') {
-      return toast.error('Cannot delete an allocated asset. Please have it returned first.');
+      return toast.error('Cannot delete an allocated asset. Please have it returned first.', {
+        style: { borderRadius: '12px', background: '#7f1d1d', color: '#fff', border: '1px solid #dc2626' }
+      });
     }
     if (window.confirm('Are you sure you want to delete this asset?')) {
       try {
         await api.delete(`/assets/${id}`);
-        toast.success('Asset deleted successfully');
+        toast.success('Asset deleted successfully', {
+          style: { borderRadius: '12px', background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+        });
         fetchAssets();
       } catch (err) {
         toast.error(err.response?.data?.message || 'Failed to delete asset');
@@ -84,203 +101,231 @@ export default function AssetInventory() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen">
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Inventory Manager</h1>
-          <p className="text-slate-500 mt-1">Manage, audit, and track organization assets.</p>
-        </div>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => setIsSmartImportModalOpen(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 rounded-xl shadow-md font-medium transition-all flex items-center space-x-2"
-          >
-            <SparklesIcon />
-            <span>Smart Import</span>
-          </button>
-          <button 
-            onClick={() => setIsBulkModalOpen(true)}
-            className="px-5 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl shadow-sm font-medium transition-colors flex items-center space-x-2 border border-indigo-200"
-          >
-            <UploadIcon />
-            <span>Bulk Upload</span>
-          </button>
-          <button 
-            onClick={openAddModal}
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-md font-medium transition-colors flex items-center space-x-2"
-          >
-            <PlusIcon />
-            <span>Add New Asset</span>
-          </button>
-        </div>
-      </div>
+    <div ref={backgroundRef} className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-cyan-500/30 overflow-hidden relative">
+      
+      {/* Background Ambience */}
+      <div className="blob1 absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
+      <div className="blob2 absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
+      <div className="blob3 absolute top-[30%] left-[40%] w-[30vw] h-[30vw] rounded-full bg-purple-900/10 blur-[100px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] opacity-30 pointer-events-none" />
 
-      {/* Tabs Layout */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 mb-6 gap-4">
-        <div className="flex space-x-8">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-4 text-sm font-medium relative transition-colors ${
-                activeTab === tab ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'
-              }`}
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <PackageSearch className="text-cyan-400" size={28} />
+              <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-500 tracking-tight">
+                Inventory Core
+              </h1>
+            </div>
+            <p className="text-slate-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span>
+              Manage, audit, and track organization assets securely.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(168,85,247,0.4)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsSmartImportModalOpen(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-lg font-bold transition-all flex items-center space-x-2 border border-white/10"
             >
-              {tab}
-              {activeTab === tab && (
-                <motion.div
-                  layoutId="inventory-tab-indicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
-                  initial={false}
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                />
-              )}
-            </button>
-          ))}
+              <Sparkles size={18} />
+              <span>Smart Import</span>
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(99,102,241,0.3)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsBulkModalOpen(true)}
+              className="px-5 py-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 rounded-xl font-bold transition-all flex items-center space-x-2 hover:bg-indigo-500/20"
+            >
+              <Upload size={18} />
+              <span>Bulk Upload</span>
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(34,211,238,0.4)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={openAddModal}
+              className="px-5 py-2.5 bg-white/10 text-white border border-white/20 rounded-xl font-bold transition-all flex items-center space-x-2 hover:bg-white/20"
+            >
+              <Plus size={18} className="text-cyan-400" />
+              <span>Add Asset</span>
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Tabs Layout */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 mb-6 gap-4">
+          <div className="flex space-x-8">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-4 text-sm font-bold tracking-wider uppercase relative transition-colors ${
+                  activeTab === tab ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <motion.div
+                    layoutId="inventory-tab-indicator-dark"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+          {(filterParam || conditionParam) && (
+            <Link to="/admin/inventory" className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-md hover:bg-rose-500/20 transition-colors flex items-center gap-1 mb-4 sm:mb-0 uppercase tracking-widest">
+              Clear Filters <X size={14} />
+            </Link>
+          )}
         </div>
-        {(filterParam || conditionParam) && (
-          <Link to="/admin/inventory" className="text-xs font-semibold text-rose-500 bg-rose-50 px-3 py-1.5 rounded-full hover:bg-rose-100 transition-colors flex items-center gap-1 mb-4 sm:mb-0">
-            Clear Filters &times;
-          </Link>
-        )}
-      </div>
 
-      {/* Tab Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {activeTab === 'Fixed Assets' && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Asset Name</th>
-                  <th className="px-6 py-4 font-semibold">Serial Number</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold">Allocation</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {fixedAssets.map((asset) => (
-                  <tr key={asset._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-800">{asset.name}</td>
-                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{asset.serialNumber || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        asset.status === 'Allocated' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'
-                      }`}>
-                        {asset.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{asset.assignedTo ? asset.assignedTo.name : 'Unassigned'}</td>
-                    <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
-                      <button onClick={() => openEditModal(asset)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Asset">
-                        <EditIcon />
-                      </button>
-                      <button onClick={() => handleDelete(asset._id, asset.status)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete Asset">
-                        <DeleteIcon />
-                      </button>
-                      <Link to={`/admin/inventory/${asset._id}`} className="text-indigo-600 hover:text-indigo-800 font-medium ml-2 border-l border-slate-200 pl-3 text-xs">History &rarr;</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </motion.div>
-        )}
+        {/* Tab Content */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+          
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 border-4 border-t-cyan-400 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              {activeTab === 'Fixed Assets' && (
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-white/[0.02] border-b border-white/10 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                      <tr>
+                        <th className="px-6 py-4 font-mono">Asset Target</th>
+                        <th className="px-6 py-4 font-mono">Serial Code</th>
+                        <th className="px-6 py-4 font-mono">Status Node</th>
+                        <th className="px-6 py-4 font-mono">Allocation</th>
+                        <th className="px-6 py-4 font-mono text-right">Directives</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {fixedAssets.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-mono">No fixed assets found.</td></tr>}
+                      {fixedAssets.map((asset) => (
+                        <tr key={asset._id} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="px-6 py-4 font-bold text-slate-200">{asset.name}</td>
+                          <td className="px-6 py-4 text-cyan-400/70 font-mono text-xs">{asset.serialNumber || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded border text-[10px] uppercase font-bold tracking-widest ${
+                              asset.status === 'Allocated' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            }`}>
+                              {asset.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-400">{asset.assignedTo ? asset.assignedTo.name : 'Unassigned'}</td>
+                          <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
+                            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(asset)} className="text-slate-500 hover:text-indigo-400 transition-colors bg-white/5 p-1.5 rounded" title="Edit Asset">
+                              <Edit size={16} />
+                            </motion.button>
+                            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDelete(asset._id, asset.status)} className="text-slate-500 hover:text-rose-400 transition-colors bg-white/5 p-1.5 rounded" title="Delete Asset">
+                              <Trash2 size={16} />
+                            </motion.button>
+                            <Link to={`/admin/inventory/${asset._id}`} className="text-indigo-400 hover:text-indigo-300 font-bold ml-2 border-l border-white/10 pl-3 text-xs uppercase tracking-wider">History &rarr;</Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </motion.div>
+              )}
 
-        {activeTab === 'Consumables' && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Item Name</th>
-                  <th className="px-6 py-4 font-semibold">Current Volume</th>
-                  <th className="px-6 py-4 font-semibold">Minimum Threshold</th>
-                  <th className="px-6 py-4 font-semibold text-right">Stock Alert</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {consumables.map((item) => {
-                  const isLow = item.quantity < item.threshold;
-                  return (
-                    <tr key={item._id} className={`transition-colors ${isLow ? 'bg-rose-50/30' : 'hover:bg-slate-50/50'}`}>
-                      <td className="px-6 py-4 font-medium text-slate-800">{item.name}</td>
-                      <td className="px-6 py-4 font-mono font-semibold text-slate-700">{item.quantity}</td>
-                      <td className="px-6 py-4 text-slate-500 font-mono">{item.threshold}</td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
-                        {isLow ? (
-                          <span className="inline-flex items-center space-x-1 text-rose-600 bg-rose-50 px-2 py-1 rounded-md text-xs font-bold mr-2">
-                            <WarningIcon />
-                            <span>Low Stock</span>
-                          </span>
-                        ) : (
-                          <span className="text-emerald-500 text-xs font-bold mr-2">Adequate</span>
-                        )}
-                        <button onClick={() => openEditModal(item)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Asset">
-                          <EditIcon />
-                        </button>
-                        <button onClick={() => handleDelete(item._id, item.status)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete Asset">
-                          <DeleteIcon />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </motion.div>
-        )}
+              {activeTab === 'Consumables' && (
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-white/[0.02] border-b border-white/10 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                      <tr>
+                        <th className="px-6 py-4 font-mono">Stock Target</th>
+                        <th className="px-6 py-4 font-mono">Volume</th>
+                        <th className="px-6 py-4 font-mono">Threshold</th>
+                        <th className="px-6 py-4 font-mono text-right">Integrity Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {consumables.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-slate-500 font-mono">No consumables found.</td></tr>}
+                      {consumables.map((item) => {
+                        const isLow = item.quantity < item.threshold;
+                        return (
+                          <tr key={item._id} className={`transition-colors group ${isLow ? 'bg-rose-500/5' : 'hover:bg-white/[0.02]'}`}>
+                            <td className="px-6 py-4 font-bold text-slate-200">{item.name}</td>
+                            <td className="px-6 py-4 font-mono font-bold text-slate-300">{item.quantity}</td>
+                            <td className="px-6 py-4 text-slate-500 font-mono">{item.threshold}</td>
+                            <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
+                              {isLow ? (
+                                <span className="inline-flex items-center gap-1 text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest mr-2 animate-pulse">
+                                  <AlertTriangle size={12} />
+                                  Critical Stock
+                                </span>
+                              ) : (
+                                <span className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest mr-2 border border-emerald-500/30 px-2 py-1 rounded bg-emerald-500/10">Adequate</span>
+                              )}
+                              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(item)} className="text-slate-500 hover:text-indigo-400 transition-colors bg-white/5 p-1.5 rounded" title="Edit Asset">
+                                <Edit size={16} />
+                              </motion.button>
+                              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDelete(item._id, item.status)} className="text-slate-500 hover:text-rose-400 transition-colors bg-white/5 p-1.5 rounded" title="Delete Asset">
+                                <Trash2 size={16} />
+                              </motion.button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </motion.div>
+              )}
 
-        {activeTab === 'Repair & Disposed' && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Asset Name</th>
-                  <th className="px-6 py-4 font-semibold">State</th>
-                  <th className="px-6 py-4 font-semibold">Date Logged</th>
-                  <th className="px-6 py-4 font-semibold text-right">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {historyAssets.map((asset) => (
-                  <tr key={asset._id} className="hover:bg-slate-50/50 transition-colors text-slate-500">
-                    <td className="px-6 py-4 font-medium text-slate-700">{asset.name}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        asset.condition === 'Scrapped' ? 'bg-slate-200 text-slate-600' : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {asset.condition}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">{new Date(asset.updatedAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
-                      <span className="italic text-xs text-slate-400 max-w-[150px] truncate mr-2" title={asset.description}>{asset.description || 'No notes'}</span>
-                      <button onClick={() => openEditModal(asset)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Asset">
-                        <EditIcon />
-                      </button>
-                      <button onClick={() => handleDelete(asset._id, asset.status)} className="text-slate-400 hover:text-rose-600 transition-colors" title="Delete Asset">
-                        <DeleteIcon />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </motion.div>
-        )}
+              {activeTab === 'Repair & Disposed' && (
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-white/[0.02] border-b border-white/10 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                      <tr>
+                        <th className="px-6 py-4 font-mono">Asset Target</th>
+                        <th className="px-6 py-4 font-mono">State</th>
+                        <th className="px-6 py-4 font-mono">Date Logged</th>
+                        <th className="px-6 py-4 font-mono text-right">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {historyAssets.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-slate-500 font-mono">No history logs found.</td></tr>}
+                      {historyAssets.map((asset) => (
+                        <tr key={asset._id} className="hover:bg-white/[0.02] transition-colors text-slate-400 group">
+                          <td className="px-6 py-4 font-bold text-slate-300">{asset.name}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded border text-[10px] uppercase font-bold tracking-widest ${
+                              asset.condition === 'Scrapped' ? 'bg-slate-500/20 text-slate-400 border-slate-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            }`}>
+                              {asset.condition}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-xs">{new Date(asset.updatedAt).toLocaleDateString('en-GB')}</td>
+                          <td className="px-6 py-4 text-right flex items-center justify-end space-x-3">
+                            <span className="italic text-xs text-slate-500 max-w-[150px] truncate mr-2" title={asset.description}>{asset.description || 'No notes'}</span>
+                            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => openEditModal(asset)} className="text-slate-500 hover:text-indigo-400 transition-colors bg-white/5 p-1.5 rounded" title="Edit Asset">
+                              <Edit size={16} />
+                            </motion.button>
+                            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleDelete(asset._id, asset.status)} className="text-slate-500 hover:text-rose-400 transition-colors bg-white/5 p-1.5 rounded" title="Delete Asset">
+                              <Trash2 size={16} />
+                            </motion.button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </motion.div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add Asset Modal */}
@@ -312,13 +357,7 @@ function AssetFormModal({ isOpen, onClose, onSaveSuccess, existingAsset }) {
   const isEdit = !!existingAsset;
   
   const [formData, setFormData] = React.useState({
-    name: '',
-    type: 'Non-Consumable',
-    description: '',
-    quantity: '',
-    threshold: '',
-    serialNumber: '',
-    condition: 'New'
+    name: '', type: 'Non-Consumable', description: '', quantity: '', threshold: '', serialNumber: '', condition: 'New'
   });
   const [loading, setLoading] = React.useState(false);
 
@@ -343,8 +382,6 @@ function AssetFormModal({ isOpen, onClose, onSaveSuccess, existingAsset }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Clean up payload to avoid Mongoose CastErrors for empty numbers
     const payload = { ...formData };
     if (payload.type === 'Non-Consumable') {
       delete payload.quantity;
@@ -357,15 +394,19 @@ function AssetFormModal({ isOpen, onClose, onSaveSuccess, existingAsset }) {
     try {
       if (isEdit) {
         await api.put(`/assets/${existingAsset._id}`, payload);
-        toast.success('Asset updated successfully');
+        toast.success('Hardware Registry Updated', {
+          style: { borderRadius: '12px', background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+        });
       } else {
         await api.post('/assets', payload);
-        toast.success('Asset added successfully');
+        toast.success('Asset logged successfully', {
+          style: { borderRadius: '12px', background: '#064e3b', color: '#fff', border: '1px solid #059669' }
+        });
       }
       onSaveSuccess();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to ${isEdit ? 'update' : 'add'} asset`);
+      toast.error(err.response?.data?.message || `Operation failed`);
     } finally {
       setLoading(false);
     }
@@ -375,78 +416,89 @@ function AssetFormModal({ isOpen, onClose, onSaveSuccess, existingAsset }) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8 overflow-hidden z-10 max-h-[90vh] overflow-y-auto custom-scrollbar"
+            className="relative w-full max-w-lg bg-gradient-to-b from-[#0f172a] to-[#020617] rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden z-10 max-h-[90vh] overflow-y-auto custom-scrollbar border border-cyan-500/30"
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">{isEdit ? 'Edit Asset' : 'Add New Asset'}</h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Asset Name</label>
-                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none" />
-              </div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500" />
+            <div className="p-8">
+              <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Asset Type</label>
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none">
-                  <option value="Non-Consumable">Fixed Asset (Non-Consumable)</option>
-                  <option value="Consumable">Consumable Item</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Condition</label>
-                <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none">
-                  <option value="New">New</option>
-                  <option value="Good">Good</option>
-                  <option value="Under Repair">Under Repair</option>
-                  <option value="Damaged">Damaged</option>
-                  <option value="Scrapped">Scrapped</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description / Notes (Optional)</label>
-                <textarea rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none" />
-              </div>
-
-              {formData.type === 'Non-Consumable' && (
+              <div className="flex items-center gap-4 mb-8">
+                <div className="bg-cyan-500/20 p-3 rounded-2xl text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                  <Edit size={24} />
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Serial Number</label>
-                  <input type="text" value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none" />
-                  <p className="text-xs text-slate-500 mt-1">Leave blank if unknown.</p>
+                  <h2 className="text-xl font-bold text-white tracking-tight">{isEdit ? 'Reconfigure Asset' : 'Log New Asset'}</h2>
+                  <p className="text-sm text-slate-400 font-medium">Update network inventory parameters</p>
                 </div>
-              )}
-
-              {formData.type === 'Consumable' && (
-                <div className="flex space-x-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Initial Quantity</label>
-                    <input type="number" min="0" required value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Low Stock Threshold</label>
-                    <input type="number" min="0" required value={formData.threshold} onChange={e => setFormData({...formData, threshold: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 outline-none" />
-                  </div>
-                </div>
-              )}
-              
-              <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" disabled={loading} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-md disabled:opacity-70">
-                  {loading ? 'Saving...' : (isEdit ? 'Save Changes' : 'Create Asset')}
-                </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Asset Target Name</label>
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" />
+                </div>
+                
+                <div>
+                  <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Asset Class</label>
+                  <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono appearance-none">
+                    <option value="Non-Consumable" className="bg-slate-900">Fixed Hardware (Non-Consumable)</option>
+                    <option value="Consumable" className="bg-slate-900">Consumable Stock</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Diagnostics / Condition</label>
+                  <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono appearance-none">
+                    <option value="New" className="bg-slate-900">Pristine (New)</option>
+                    <option value="Good" className="bg-slate-900">Functional (Good)</option>
+                    <option value="Under Repair" className="bg-slate-900">Maintenance (Under Repair)</option>
+                    <option value="Damaged" className="bg-slate-900">Compromised (Damaged)</option>
+                    <option value="Scrapped" className="bg-slate-900">Decommissioned (Scrapped)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Logs / Notes (Optional)</label>
+                  <textarea rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" />
+                </div>
+
+                {formData.type === 'Non-Consumable' && (
+                  <div>
+                    <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Serial Verification Code</label>
+                    <input type="text" value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" />
+                    <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Leave blank for auto-generation (N/A).</p>
+                  </div>
+                )}
+
+                {formData.type === 'Consumable' && (
+                  <div className="flex space-x-4">
+                    <div className="flex-1">
+                      <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Initial Volume</label>
+                      <input type="number" min="0" required value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-1 block">Low Stock Alert Level</label>
+                      <input type="number" min="0" required value={formData.threshold} onChange={e => setFormData({...formData, threshold: e.target.value})} className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none font-mono" />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="pt-6 flex space-x-3">
+                  <button type="button" onClick={onClose} className="flex-1 py-3.5 px-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-bold hover:bg-white/10 transition-colors">Abort</button>
+                  <button type="submit" disabled={loading} className="flex-1 py-3.5 px-4 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg transition-all disabled:opacity-70 relative overflow-hidden group">
+                    <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                    <span className="relative z-10 flex justify-center items-center gap-2">
+                      {loading ? 'Transmitting...' : (isEdit ? 'Sync Changes' : 'Execute Injection')}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </motion.div>
         </div>
       )}
@@ -454,23 +506,13 @@ function AssetFormModal({ isOpen, onClose, onSaveSuccess, existingAsset }) {
   );
 }
 
-function SparklesIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-    </svg>
-  );
-}
-
 function BulkUploadModal({ isOpen, onClose, onUploadSuccess }) {
-// ... existing BulkUploadModal
-// ... to not delete it I'll keep it as is
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return toast.error('Please select a file first');
+    if (!file) return toast.error('Data source required');
     
     setLoading(true);
     const formData = new FormData();
@@ -478,19 +520,19 @@ function BulkUploadModal({ isOpen, onClose, onUploadSuccess }) {
     
     try {
       const res = await api.post('/assets/bulk-upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      toast.success(res.data.message || 'Assets uploaded successfully');
+      toast.success(res.data.message || 'Data injection successful', {
+        style: { borderRadius: '12px', background: '#064e3b', color: '#fff', border: '1px solid #059669' }
+      });
       if (res.data.errors && res.data.errors.length > 0) {
-        toast.error(`Some rows had errors: ${res.data.errors.join(', ')}`, { duration: 5000 });
+        toast.error(`Corruption in rows: ${res.data.errors.join(', ')}`, { duration: 5000 });
       }
       onUploadSuccess();
       setFile(null);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to upload assets');
+      toast.error(err.response?.data?.message || 'Injection protocol failed');
     } finally {
       setLoading(false);
     }
@@ -500,44 +542,48 @@ function BulkUploadModal({ isOpen, onClose, onUploadSuccess }) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 z-10"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-gradient-to-b from-[#0f172a] to-[#020617] rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] p-8 z-10 border border-indigo-500/30 overflow-hidden"
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-teal-500" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Bulk Upload Assets</h2>
-            <p className="text-sm text-slate-500 mb-6">Upload a CSV or Excel (.xlsx) file to add multiple assets at once.</p>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-500" />
+            <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <div className="bg-indigo-500/20 p-3 rounded-2xl text-indigo-400 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                <Upload size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Mass Data Injection</h2>
+                <p className="text-sm text-slate-400 font-medium">Upload .CSV or Excel source files</p>
+              </div>
+            </div>
             
             <form onSubmit={handleUpload} className="space-y-4">
-              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-50 transition-colors">
+              <div className="border-2 border-dashed border-indigo-500/30 rounded-2xl p-6 text-center hover:bg-indigo-500/10 transition-colors bg-black/20">
                 <input 
                   type="file" 
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                   onChange={e => setFile(e.target.files[0])}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-500/20 file:text-indigo-400 hover:file:bg-indigo-500/30 cursor-pointer transition-colors"
                 />
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-xl text-xs text-slate-600 space-y-1">
-                <p className="font-semibold text-slate-700 mb-1">Required Columns:</p>
-                <p>• <span className="font-mono">name</span> (e.g. Dell XPS 15)</p>
-                <p>• <span className="font-mono">type</span> (Consumable or Non-Consumable)</p>
-                <p className="font-semibold text-slate-700 mt-2 mb-1">Conditional Columns:</p>
-                <p>• <span className="font-mono">serialNumber</span> (Required for Non-Consumable)</p>
-                <p>• <span className="font-mono">quantity</span>, <span className="font-mono">threshold</span> (For Consumables)</p>
+              <div className="bg-black/40 border border-white/5 p-4 rounded-xl text-xs text-slate-400 space-y-1 font-mono">
+                <p className="font-bold text-indigo-400 mb-1 uppercase tracking-wider">Required Schema:</p>
+                <p>• name <span className="text-slate-500">(e.g. Dell XPS 15)</span></p>
+                <p>• type <span className="text-slate-500">(Consumable / Non-Consumable)</span></p>
+                <p className="font-bold text-indigo-400 mt-3 mb-1 uppercase tracking-wider">Conditional Schema:</p>
+                <p>• serialNumber <span className="text-slate-500">(For Non-Consumable)</span></p>
+                <p>• quantity, threshold <span className="text-slate-500">(For Consumables)</span></p>
               </div>
               
               <div className="pt-4 flex space-x-3">
-                <button type="button" onClick={onClose} className="flex-1 px-4 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" disabled={loading} className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-emerald-200 disabled:opacity-70 flex items-center justify-center">
-                  {loading ? 'Uploading...' : 'Upload File'}
+                <button type="button" onClick={onClose} className="flex-1 py-3.5 px-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-bold hover:bg-white/10 transition-colors">Abort</button>
+                <button type="submit" disabled={loading} className="flex-1 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-xl text-sm font-bold shadow-lg transition-all disabled:opacity-70 relative overflow-hidden group">
+                  <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                  <span className="relative z-10">{loading ? 'Parsing...' : 'Execute Upload'}</span>
                 </button>
               </div>
             </form>
@@ -556,7 +602,7 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
 
   const handleParse = async (e) => {
     e.preventDefault();
-    if (!file) return toast.error('Please select a file first');
+    if (!file) return toast.error('Data source required');
     
     setLoading(true);
     const formData = new FormData();
@@ -568,22 +614,19 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
       });
       setParsedAssets(res.data || []);
       setStep(2);
-      toast.success('File parsed successfully');
+      toast.success('AI parsing complete', {
+        style: { borderRadius: '12px', background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+      });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to parse file');
+      toast.error(err.response?.data?.message || 'AI parsing failed');
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirm = async () => {
-    // Validate missing critical fields
-    const hasErrors = parsedAssets.some(a => 
-      !a.name || !a.type || (a.type === 'Non-Consumable' && !a.serialNumber)
-    );
-    if (hasErrors) {
-      return toast.error('Please fix missing fields (highlighted in red) before confirming.');
-    }
+    const hasErrors = parsedAssets.some(a => !a.name || !a.type || (a.type === 'Non-Consumable' && !a.serialNumber));
+    if (hasErrors) return toast.error('Resolve critical schema errors before execution.');
 
     setLoading(true);
     try {
@@ -593,7 +636,7 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
       reset();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to insert assets');
+      toast.error(err.response?.data?.message || 'Injection failed');
     } finally {
       setLoading(false);
     }
@@ -615,46 +658,44 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { reset(); onClose(); }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => { reset(); onClose(); }}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`relative w-full ${step === 1 ? 'max-w-md' : 'max-w-4xl'} bg-white rounded-3xl shadow-2xl overflow-hidden z-10 transition-all duration-300 max-h-[90vh] flex flex-col`}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className={`relative w-full ${step === 1 ? 'max-w-md' : 'max-w-4xl'} bg-gradient-to-b from-[#0f172a] to-[#020617] rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden z-10 transition-all duration-300 max-h-[90vh] flex flex-col border border-purple-500/30`}
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-indigo-500" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500" />
             
             <div className="p-8 pb-4">
-              <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <SparklesIcon /> 
-                {step === 1 ? 'AI Smart Import' : 'Verify Extracted Assets'}
-              </h2>
-              <p className="text-sm text-slate-500 mt-2">
-                {step === 1 
-                  ? 'Upload an invoice (PDF) or list (Excel). AI will extract and structure the data automatically.'
-                  : 'Review the extracted data. Fix any missing fields before confirming.'}
-              </p>
+              <button onClick={() => { reset(); onClose(); }} className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+              <div className="flex items-center gap-4 mb-2">
+                <div className="bg-purple-500/20 p-3 rounded-2xl text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                  <Sparkles size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">{step === 1 ? 'AI Intelligence Import' : 'Data Integrity Verification'}</h2>
+                  <p className="text-sm text-slate-400 font-medium">
+                    {step === 1 ? 'Neural net extraction from invoices (PDF/CSV).' : 'Validate structural integrity before injection.'}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {step === 1 && (
               <div className="p-8 pt-4">
                 <form onSubmit={handleParse} className="space-y-6">
-                  <div className="border-2 border-dashed border-purple-200 rounded-2xl p-8 text-center hover:bg-purple-50/50 transition-colors">
+                  <div className="border-2 border-dashed border-purple-500/30 rounded-2xl p-8 text-center hover:bg-purple-500/10 transition-colors bg-black/20">
                     <input 
                       type="file" 
                       accept=".pdf, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                       onChange={e => setFile(e.target.files[0])}
-                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer transition-colors"
+                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30 cursor-pointer transition-colors"
                     />
                   </div>
                   <div className="flex space-x-3">
-                    <button type="button" onClick={() => { reset(); onClose(); }} className="flex-1 px-4 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                    <button type="submit" disabled={loading} className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-purple-200 disabled:opacity-70 flex items-center justify-center">
-                      {loading ? 'Extracting with AI...' : 'Parse Bill'}
+                    <button type="button" onClick={() => { reset(); onClose(); }} className="flex-1 py-3.5 px-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-bold hover:bg-white/10 transition-colors">Abort</button>
+                    <button type="submit" disabled={loading} className="flex-1 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-sm font-bold shadow-lg transition-all disabled:opacity-70 relative overflow-hidden group">
+                      <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                      <span className="relative z-10">{loading ? 'Extracting...' : 'Init Analysis'}</span>
                     </button>
                   </div>
                 </form>
@@ -664,41 +705,41 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
             {step === 2 && (
               <>
                 <div className="flex-1 overflow-auto px-8 custom-scrollbar">
-                  <table className="w-full text-left text-sm mt-4">
-                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 sticky top-0 z-10">
+                  <table className="w-full text-left text-sm mt-4 border-collapse">
+                    <thead className="bg-white/[0.05] border-b border-white/10 text-slate-400 text-[10px] uppercase tracking-widest sticky top-0 z-10">
                       <tr>
-                        <th className="px-4 py-3 font-semibold rounded-tl-lg">Name</th>
-                        <th className="px-4 py-3 font-semibold">Type</th>
-                        <th className="px-4 py-3 font-semibold">Serial No (Non-Cons)</th>
-                        <th className="px-4 py-3 font-semibold">Qty (Cons)</th>
-                        <th className="px-4 py-3 font-semibold rounded-tr-lg text-right">Remove</th>
+                        <th className="px-4 py-3 font-bold rounded-tl-lg">Target Name</th>
+                        <th className="px-4 py-3 font-bold">Class Type</th>
+                        <th className="px-4 py-3 font-bold">Serial Code</th>
+                        <th className="px-4 py-3 font-bold">Volume</th>
+                        <th className="px-4 py-3 font-bold rounded-tr-lg text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-white/5">
                       {parsedAssets.map((asset, idx) => {
                         const typeError = !asset.type;
                         const serialError = asset.type === 'Non-Consumable' && !asset.serialNumber;
                         const nameError = !asset.name;
                         
                         return (
-                          <tr key={idx} className="hover:bg-slate-50/50">
+                          <tr key={idx} className="hover:bg-white/[0.02]">
                             <td className="px-4 py-3">
                               <input 
                                 value={asset.name || ''} 
                                 onChange={e => updateAsset(idx, 'name', e.target.value)}
-                                className={`w-full px-2 py-1 rounded border outline-none ${nameError ? 'border-red-400 bg-red-50' : 'border-transparent hover:border-slate-300 focus:border-purple-400'}`}
-                                placeholder="Required"
+                                className={`w-full px-3 py-1.5 rounded-lg border outline-none font-mono text-xs text-white ${nameError ? 'border-rose-500/50 bg-rose-500/10' : 'border-white/10 bg-black/40 focus:border-purple-500'}`}
+                                placeholder="REQUIRED"
                               />
                             </td>
                             <td className="px-4 py-3">
                               <select 
                                 value={asset.type || ''} 
                                 onChange={e => updateAsset(idx, 'type', e.target.value)}
-                                className={`w-full px-2 py-1 rounded border outline-none ${typeError ? 'border-red-400 bg-red-50' : 'border-transparent hover:border-slate-300 focus:border-purple-400'}`}
+                                className={`w-full px-3 py-1.5 rounded-lg border outline-none font-mono text-xs text-white appearance-none ${typeError ? 'border-rose-500/50 bg-rose-500/10' : 'border-white/10 bg-black/40 focus:border-purple-500'}`}
                               >
-                                <option value="">Select...</option>
-                                <option value="Non-Consumable">Non-Consumable</option>
-                                <option value="Consumable">Consumable</option>
+                                <option value="" className="bg-slate-900">Select...</option>
+                                <option value="Non-Consumable" className="bg-slate-900">Non-Cons</option>
+                                <option value="Consumable" className="bg-slate-900">Consumable</option>
                               </select>
                             </td>
                             <td className="px-4 py-3">
@@ -706,8 +747,8 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
                                 value={asset.serialNumber || ''} 
                                 onChange={e => updateAsset(idx, 'serialNumber', e.target.value)}
                                 disabled={asset.type === 'Consumable'}
-                                className={`w-full px-2 py-1 rounded border outline-none ${serialError ? 'border-red-400 bg-red-50' : 'border-transparent hover:border-slate-300 focus:border-purple-400'} disabled:bg-slate-100 disabled:opacity-50`}
-                                placeholder={asset.type === 'Consumable' ? 'N/A' : 'Required'}
+                                className={`w-full px-3 py-1.5 rounded-lg border outline-none font-mono text-xs text-white ${serialError ? 'border-rose-500/50 bg-rose-500/10' : 'border-white/10 bg-black/40 focus:border-purple-500'} disabled:opacity-30`}
+                                placeholder={asset.type === 'Consumable' ? 'N/A' : 'REQUIRED'}
                               />
                             </td>
                             <td className="px-4 py-3">
@@ -716,14 +757,11 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
                                 value={asset.quantity || 0} 
                                 onChange={e => updateAsset(idx, 'quantity', Number(e.target.value))}
                                 disabled={asset.type === 'Non-Consumable'}
-                                className={`w-20 px-2 py-1 rounded border outline-none border-transparent hover:border-slate-300 focus:border-purple-400 disabled:bg-slate-100 disabled:opacity-50`}
+                                className={`w-20 px-3 py-1.5 rounded-lg border border-white/10 bg-black/40 font-mono text-xs text-white outline-none focus:border-purple-500 disabled:opacity-30`}
                               />
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <button 
-                                onClick={() => setParsedAssets(parsedAssets.filter((_, i) => i !== idx))}
-                                className="text-red-500 hover:text-red-700 font-medium text-xs px-2 py-1 bg-red-50 rounded"
-                              >
+                              <button onClick={() => setParsedAssets(parsedAssets.filter((_, i) => i !== idx))} className="text-rose-400 hover:text-rose-300 font-bold text-[10px] uppercase tracking-widest px-2 py-1 bg-rose-500/10 border border-rose-500/20 rounded">
                                 Drop
                               </button>
                             </td>
@@ -732,24 +770,14 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
                       })}
                     </tbody>
                   </table>
-                  {parsedAssets.length === 0 && (
-                    <div className="py-8 text-center text-slate-500 text-sm">
-                      No assets extracted. Please try another file.
-                    </div>
-                  )}
+                  {parsedAssets.length === 0 && <div className="py-8 text-center text-slate-500 text-sm font-mono">No valid structs extracted.</div>}
                 </div>
                 
-                <div className="p-8 pt-6 border-t border-slate-100 bg-slate-50 mt-4 flex space-x-3">
-                  <button type="button" onClick={() => setStep(1)} className="flex-1 px-4 py-3 text-slate-600 font-medium bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors shadow-sm">
-                    Back to Upload
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={handleConfirm}
-                    disabled={loading || parsedAssets.length === 0} 
-                    className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-indigo-200 disabled:opacity-70 flex items-center justify-center"
-                  >
-                    {loading ? 'Saving...' : `Confirm All (${parsedAssets.length} items)`}
+                <div className="p-8 pt-6 border-t border-white/10 bg-black/20 mt-4 flex space-x-3">
+                  <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 px-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl text-sm font-bold hover:bg-white/10 transition-colors">Rewind Analysis</button>
+                  <button type="button" onClick={handleConfirm} disabled={loading || parsedAssets.length === 0} className="flex-1 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg transition-all disabled:opacity-70 relative overflow-hidden group">
+                     <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                     <span className="relative z-10">Confirm & Inject</span>
                   </button>
                 </div>
               </>
@@ -758,45 +786,5 @@ function SmartImportModal({ isOpen, onClose, onUploadSuccess }) {
         </div>
       )}
     </AnimatePresence>
-  );
-}
-
-function UploadIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-    </svg>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-    </svg>
-  );
-}
-
-function DeleteIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
   );
 }
