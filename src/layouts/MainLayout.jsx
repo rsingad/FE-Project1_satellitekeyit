@@ -8,7 +8,7 @@ const MainLayout = () => {
   const { user } = useContext(AuthContext);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans relative">
+    <div className="flex h-screen bg-[#030014] overflow-hidden font-sans relative selection:bg-indigo-500/30 text-slate-200">
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -37,7 +37,10 @@ const MainLayout = () => {
         </div>
 
         {/* Subtle background decoration */}
-        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-indigo-50/50 to-slate-50 -z-10"></div>
+        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-indigo-900/10 to-transparent -z-10"></div>
+        <div className="absolute top-[-10%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-indigo-600/5 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-600/5 blur-[130px] -z-10 pointer-events-none" />
+
         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative z-10">
           <Outlet />
         </div>

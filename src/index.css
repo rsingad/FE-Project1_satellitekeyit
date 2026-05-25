@@ -6,7 +6,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans;
+    @apply bg-[#030014] text-slate-200 font-sans;
     font-family: 'Outfit', sans-serif;
   }
 }

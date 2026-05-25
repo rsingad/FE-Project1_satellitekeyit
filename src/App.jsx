@@ -19,6 +19,7 @@ import AssetInventory from './pages/admin/AssetInventory';
 import AssetTimeline from './pages/admin/AssetTimeline';
 import EmployeeMatrix from './pages/admin/EmployeeMatrix';
 import EmployeeProfile from './pages/admin/EmployeeProfile';
+import Chat from './pages/Chat';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
@@ -52,6 +53,9 @@ function App() {
 
         {/* Root Redirect */}
         <Route path="/" element={<IndexRedirect />} />
+
+        {/* Global Chat Route */}
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
 
         {/* Employee Protected Routes */}
         <Route path="/employee" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
