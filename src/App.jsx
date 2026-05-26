@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Assets from './pages/Assets';
 import Requests from './pages/Requests';
+import UserProfile from './pages/UserProfile';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -19,7 +20,6 @@ import AssetInventory from './pages/admin/AssetInventory';
 import AssetTimeline from './pages/admin/AssetTimeline';
 import EmployeeMatrix from './pages/admin/EmployeeMatrix';
 import EmployeeProfile from './pages/admin/EmployeeProfile';
-import Chat from './pages/Chat';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useContext(AuthContext);
@@ -54,14 +54,16 @@ function App() {
         {/* Root Redirect */}
         <Route path="/" element={<IndexRedirect />} />
 
-        {/* Global Chat Route */}
-        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-
         {/* Employee Protected Routes */}
         <Route path="/employee" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="assets" element={<Assets />} />
           <Route path="requests" element={<Requests />} />
+        </Route>
+
+        {/* Shared Protected Routes */}
+        <Route path="/profile" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<UserProfile />} />
         </Route>
 
         {/* Admin Protected Routes */}

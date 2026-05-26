@@ -1,8 +1,9 @@
 import { useState, useContext, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Users, Mail, Laptop, Cpu, AlertCircle, ArrowUpRight, Activity, Zap, ShieldCheck } from 'lucide-react';
+import { Users, Mail, Laptop, Cpu, AlertCircle, ArrowUpRight, Activity, Zap, ShieldCheck, PlusCircle, Clock, CheckCircle, ClipboardList, Database } from 'lucide-react';
 import { motion, useAnimation, useInView } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -71,12 +72,18 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [assetRes, reqRes] = await Promise.all([
-          api.get('/assets'),
-          user.role !== 'Employee' ? api.get('/requests') : Promise.resolve({ data: [] })
-        ]);
-        setAssets(assetRes.data);
-        setRequests(reqRes.data);
+        if (user.role === 'Employee') {
+          const meRes = await api.get('/users/me');
+          setAssets(meRes.data.assets || []);
+          setRequests(meRes.data.requests || []);
+        } else {
+          const [assetRes, reqRes] = await Promise.all([
+            api.get('/assets'),
+            api.get('/requests')
+          ]);
+          setAssets(assetRes.data || []);
+          setRequests(reqRes.data || []);
+        }
       } catch (error) {
         console.error("Failed to fetch dashboard data");
       } finally {
@@ -86,7 +93,10 @@ const Dashboard = () => {
     fetchData();
   }, [user]);
 
-  const myAssets = useMemo(() => assets.filter(a => a.assignedTo?._id === user._id), [assets, user._id]);
+  const myAssets = useMemo(() => {
+    if (user.role === 'Employee') return assets;
+    return assets.filter(a => a.assignedTo?._id === user._id || a.assignedTo === user._id);
+  }, [assets, user._id, user.role]);
   
   // Stats for Admin
   const totalAssets = assets.length;
@@ -130,14 +140,48 @@ const Dashboard = () => {
   };
 
   if (loading) return (
-    <div className="h-full flex items-center justify-center bg-[#030014]">
-      <div className="relative w-24 h-24">
-        <div className="absolute inset-0 border-4 border-t-cyan-400 border-r-purple-500 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-        <div className="absolute inset-2 border-4 border-l-cyan-400 border-b-purple-500 border-t-transparent border-r-transparent rounded-full animate-[spin_1.5s_linear_infinite_reverse]"></div>
-        <Zap className="absolute inset-0 m-auto text-cyan-400 animate-pulse" size={24} />
+    <div className="min-h-screen bg-[#030014] p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-between items-end mb-8">
+          <div className="w-64 h-10 bg-white/5 rounded-lg animate-pulse border border-white/10"></div>
+          <div className="w-48 h-10 bg-white/5 rounded-lg animate-pulse border border-white/10"></div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[1,2,3,4].map(n => (
+            <div key={n} className="bg-white/5 border border-white/10 rounded-3xl p-6 h-32 animate-pulse"></div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-3xl p-6 h-96 animate-pulse"></div>
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 h-96 animate-pulse"></div>
+        </div>
       </div>
     </div>
   );
+  
+  const myPendingReqs = requests.filter(r => r.status === 'Pending').length;
+  const myFulfilledReqs = requests.filter(r => ['Approved', 'Returned', 'Pending Return'].includes(r.status)).length;
+  const topRecentReqs = requests.slice(0, 3);
+
+  let returnBehavior = { label: "No Returns", color: "text-slate-500", bg: "bg-slate-500/10", border: "border-slate-500/30" };
+  const returned = requests.filter(r => r.status === 'Returned');
+  if (returned.length > 0) {
+    let lateCount = 0;
+    returned.forEach(r => {
+      if (r.expectedReturnDate && new Date(r.returnDate) > new Date(r.expectedReturnDate)) {
+        lateCount++;
+      }
+    });
+    if (lateCount === 0) {
+      returnBehavior = { label: "Excellent", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30" };
+    } else if (lateCount <= returned.length / 2) {
+      returnBehavior = { label: "Average", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" };
+    } else {
+      returnBehavior = { label: "Poor", color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/30" };
+    }
+  } else if (requests.length > 0) {
+    returnBehavior = { label: "Active", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/30" };
+  }
 
   return (
     <div className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-cyan-500/30 overflow-hidden relative">
@@ -300,58 +344,173 @@ const Dashboard = () => {
         )}
 
         {/* Employee Specific View (or Manager's personal view) */}
-        <motion.div variants={itemVariants} className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 sm:p-8 rounded-3xl mt-6">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="bg-white/10 p-2 rounded-lg">
-              <Laptop className="text-slate-300" size={20} />
-            </div>
-            <h3 className="text-xl font-bold text-white">My Assigned Hardware</h3>
-          </div>
-          
-          {myAssets.length === 0 ? (
-            <div className="text-center py-16 px-4 border border-dashed border-white/10 rounded-2xl bg-black/20">
-              <div className="mx-auto w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                <Laptop className="h-8 w-8 text-slate-500" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-300">No Hardware Detected</h3>
-              <p className="text-slate-500 mt-2 text-sm max-w-sm mx-auto">You do not currently have any registered hardware assets assigned to your biometric identity.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {myAssets.map(asset => (
-                <motion.div 
-                  whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(34,211,238,0.2)" }}
-                  key={asset._id} 
-                  className="group relative overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 transition-all duration-300"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-full -z-10 blur-xl transition-transform duration-500 group-hover:scale-150"></div>
-                  
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="bg-cyan-500/20 p-3 rounded-xl border border-cyan-500/30 text-cyan-400">
-                      <Laptop size={24} />
+        {(user?.role === 'Employee' || user?.role === 'Manager') && (
+          <div className="space-y-6 mt-6">
+            
+            {/* Employee Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[
+                { label: 'My Hardware', val: myAssets.length, icon: <Laptop />, color: 'text-cyan-400', bg: 'bg-cyan-400/10', border: 'border-cyan-500/30' },
+                { label: 'Pending Requisitions', val: myPendingReqs, icon: <AlertCircle />, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-500/30' },
+                { label: 'Fulfilled Requests', val: myFulfilledReqs, icon: <CheckCircle />, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-500/30' },
+              ].map((stat, i) => (
+                <motion.div variants={itemVariants} key={i} className={`relative overflow-hidden bg-white/5 backdrop-blur-xl p-6 rounded-3xl border ${stat.border} group hover:bg-white/10 transition-colors duration-300 shadow-[0_0_20px_rgba(0,0,0,0.5)]`}>
+                  <div className="flex justify-between items-start relative z-10">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">{stat.label}</p>
+                      <h3 className="text-4xl font-black text-white font-mono tracking-tight">
+                        <AnimatedCounter to={stat.val} />
+                      </h3>
                     </div>
-                    <span className="text-[10px] font-mono border border-green-500/30 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.2)]">
-                      {asset.status}
-                    </span>
-                  </div>
-                  
-                  <h4 className="font-bold text-xl text-white mb-2">{asset.name}</h4>
-                  
-                  <div className="space-y-3 mt-6 pt-4 border-t border-white/5">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Serial Number</span>
-                      <span className="font-mono text-cyan-100 bg-black/40 px-2 py-1 rounded border border-white/5">{asset.serialNumber}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Condition</span>
-                      <span className="text-slate-300">{asset.condition}</span>
+                    <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} border border-white/5`}>
+                      {stat.icon}
                     </div>
                   </div>
                 </motion.div>
               ))}
+              
+              <motion.div variants={itemVariants} className={`relative overflow-hidden bg-white/5 backdrop-blur-xl p-6 rounded-3xl border ${returnBehavior.border} group hover:bg-white/10 transition-colors duration-300 shadow-[0_0_20px_rgba(0,0,0,0.5)]`}>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Return Score</p>
+                    <span className={`inline-block mt-2 px-3 py-1 font-black text-[10px] uppercase tracking-widest rounded border ${returnBehavior.bg} ${returnBehavior.color} ${returnBehavior.border}`}>
+                      {returnBehavior.label}
+                    </span>
+                  </div>
+                  <div className={`p-3 rounded-2xl bg-white/5 text-slate-400 border border-white/5`}>
+                    <Activity />
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          )}
-        </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Quick Actions */}
+              <motion.div variants={itemVariants} className="bg-gradient-to-br from-[#0f172a] to-[#020617] border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.1)] flex flex-col justify-between">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-indigo-500/20 p-2.5 rounded-xl border border-indigo-500/30">
+                      <Zap size={20} className="text-indigo-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Quick Actions</h3>
+                  </div>
+                  <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                    Need new hardware or software? Submit a new requisition request directly to the Admin queue.
+                  </p>
+                </div>
+                <Link to="/employee/requests">
+                  <motion.button
+                    whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(34, 211, 238, 0.4)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white py-4 rounded-xl text-sm font-bold shadow-lg transition-all relative overflow-hidden group/btn"
+                  >
+                    <div className="absolute inset-0 -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0" />
+                    <span className="relative z-10 flex items-center gap-2">
+                      <PlusCircle size={18} /> Request New Asset
+                    </span>
+                  </motion.button>
+                </Link>
+              </motion.div>
+
+              {/* Recent Requisitions */}
+              <motion.div variants={itemVariants} className="lg:col-span-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <ClipboardList size={18} className="text-purple-400" />
+                    Recent Requisitions
+                  </h3>
+                  <Link to="/employee/requests" className="text-xs font-bold text-purple-400 hover:text-purple-300 uppercase tracking-widest transition-colors flex items-center gap-1">
+                    View All <ArrowUpRight size={12} />
+                  </Link>
+                </div>
+                
+                {topRecentReqs.length > 0 ? (
+                  <div className="space-y-3">
+                    {topRecentReqs.map(req => (
+                      <div key={req._id} className="flex justify-between items-center bg-black/40 p-4 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <div>
+                          <p className="font-bold text-slate-200">{req.assetName}</p>
+                          <p className="text-[10px] text-slate-500 font-mono mt-1 uppercase tracking-widest">{new Date(req.requestDate).toLocaleDateString('en-GB')}</p>
+                        </div>
+                        <span className={`px-2.5 py-1 text-[9px] uppercase tracking-widest font-black rounded border shadow-inner ${
+                          req.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                          req.status === 'Rejected' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
+                          req.status === 'Pending Return' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                          req.status === 'Returned' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }`}>
+                          {req.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border border-dashed border-white/10 rounded-2xl bg-black/20">
+                    <p className="text-slate-500 text-sm font-mono">No recent activity detected.</p>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+
+            {/* My Assigned Hardware */}
+            <motion.div variants={itemVariants} className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 sm:p-8 rounded-3xl mt-6 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+              <div className="flex items-center gap-3 mb-8">
+                <div className="bg-white/10 p-2 rounded-lg">
+                  <Laptop className="text-slate-300" size={20} />
+                </div>
+                <h3 className="text-xl font-bold text-white">My Assigned Hardware</h3>
+              </div>
+              
+              {myAssets.length === 0 ? (
+                <div className="text-center py-16 px-4 border border-dashed border-white/10 rounded-2xl bg-black/20">
+                  <div className="mx-auto w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <Laptop className="h-8 w-8 text-slate-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-300">No Hardware Detected</h3>
+                  <p className="text-slate-500 mt-2 text-sm max-w-sm mx-auto">You do not currently have any registered hardware assets assigned to your biometric identity.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {myAssets.map(asset => (
+                    <motion.div 
+                      whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(34,211,238,0.2)" }}
+                      key={asset._id} 
+                      className="group relative overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 transition-all duration-300"
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-full -z-10 blur-xl transition-transform duration-500 group-hover:scale-150"></div>
+                      
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="bg-cyan-500/20 p-3 rounded-xl border border-cyan-500/30 text-cyan-400">
+                          <Laptop size={24} />
+                        </div>
+                        <span className="text-[10px] font-mono border border-green-500/30 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                          {asset.status}
+                        </span>
+                      </div>
+                      
+                      <h4 className="font-bold text-xl text-white mb-2">{asset.name}</h4>
+                      
+                      <div className="space-y-3 mt-6 pt-4 border-t border-white/5">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Serial Number</span>
+                          <span className="font-mono text-cyan-100 bg-black/40 px-2 py-1 rounded border border-white/5">{asset.serialNumber || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Condition</span>
+                          <span className="text-slate-300">{asset.condition}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
 
       </motion.div>
     </div>

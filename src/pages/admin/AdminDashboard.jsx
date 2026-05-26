@@ -18,8 +18,10 @@ export default function AdminDashboard() {
     recentActivity: [],
     recentRequests: []
   });
+  const [isLoading, setIsLoading] = useState(true);
   
   const backgroundRef = useRef(null);
+  const fetchCalled = useRef(false);
 
   // GSAP Background Animation
   useEffect(() => {
@@ -32,12 +34,17 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (fetchCalled.current) return;
+    fetchCalled.current = true;
+
     const fetchMetrics = async () => {
       try {
         const res = await api.get('/assets/metrics');
         setMetricsData(res.data);
       } catch (err) {
         console.error(err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchMetrics();
@@ -88,30 +95,42 @@ export default function AdminDashboard() {
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {metrics.map((metric, idx) => (
-            <Link to={metric.link} key={metric.title}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200 }}
-                className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:border-white/20 transition-all hover:-translate-y-1 relative overflow-hidden group h-full cursor-pointer shadow-[0_0_30px_rgba(0,0,0,0.5)]"
-              >
-                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${metric.color} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500`} />
-                <div className="flex items-start justify-between relative z-10">
-                  <div>
-                    <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-2">{metric.title}</p>
-                    <h3 className="text-4xl font-black text-white tracking-tighter">{metric.value}</h3>
-                  </div>
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.color} text-white ${metric.glow}`}>
-                    <metric.icon size={24} />
-                  </div>
+          {isLoading ? (
+            Array(4).fill(0).map((_, idx) => (
+              <div key={idx} className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 h-[150px] animate-pulse shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                <div className="w-24 h-4 bg-slate-700/50 rounded mb-3"></div>
+                <div className="w-16 h-10 bg-slate-700/50 rounded mb-6"></div>
+                <div className="border-t border-white/5 pt-4">
+                  <div className="w-32 h-3 bg-slate-700/30 rounded"></div>
                 </div>
-                <div className="mt-6 pt-4 border-t border-white/5 relative z-10">
-                  <span className="text-xs font-mono text-slate-500">{metric.change}</span>
-                </div>
-              </motion.div>
-            </Link>
-          ))}
+              </div>
+            ))
+          ) : (
+            metrics.map((metric, idx) => (
+              <Link to={metric.link} key={metric.title}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.1, type: 'spring', stiffness: 200 }}
+                  className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:border-white/20 transition-all hover:-translate-y-1 relative overflow-hidden group h-full cursor-pointer shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                >
+                  <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${metric.color} opacity-10 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500`} />
+                  <div className="flex items-start justify-between relative z-10">
+                    <div>
+                      <p className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-2">{metric.title}</p>
+                      <h3 className="text-4xl font-black text-white tracking-tighter">{metric.value}</h3>
+                    </div>
+                    <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.color} text-white ${metric.glow}`}>
+                      <metric.icon size={24} />
+                    </div>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-white/5 relative z-10">
+                    <span className="text-xs font-mono text-slate-500">{metric.change}</span>
+                  </div>
+                </motion.div>
+              </Link>
+            ))
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
@@ -120,19 +139,33 @@ export default function AdminDashboard() {
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Activity className="text-cyan-400" size={24}/> Audit Trail</h3>
             <div className="space-y-6">
-              {metricsData.recentActivity?.map(log => (
-                <div key={log._id} className="flex gap-4 group">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold shrink-0 shadow-[0_0_10px_rgba(99,102,241,0.2)] group-hover:scale-110 transition-transform">
-                    {log.performedBy?.name?.charAt(0) || '?'}
+              {isLoading ? (
+                Array(4).fill(0).map((_, i) => (
+                  <div key={i} className="flex gap-4 animate-pulse">
+                    <div className="w-10 h-10 rounded-full bg-slate-700/50 shrink-0" />
+                    <div className="w-full">
+                      <div className="w-3/4 h-4 bg-slate-700/50 rounded mb-2" />
+                      <div className="w-1/2 h-3 bg-slate-700/30 rounded" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-300 font-medium leading-relaxed">{log.details}</p>
-                    <p className="text-xs text-slate-500 mt-1 font-mono">{new Date(log.timestamp).toLocaleString('en-GB')} • {log.performedBy?.name}</p>
-                  </div>
-                </div>
-              ))}
-              {(!metricsData.recentActivity || metricsData.recentActivity.length === 0) && (
-                <p className="text-slate-500 text-sm font-mono text-center mt-10">No recent activity detected.</p>
+                ))
+              ) : (
+                <>
+                  {metricsData.recentActivity?.map(log => (
+                    <div key={log._id} className="flex gap-4 group">
+                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold shrink-0 shadow-[0_0_10px_rgba(99,102,241,0.2)] group-hover:scale-110 transition-transform">
+                        {log.performedBy?.name?.charAt(0) || '?'}
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-300 font-medium leading-relaxed">{log.details}</p>
+                        <p className="text-xs text-slate-500 mt-1 font-mono">{new Date(log.timestamp).toLocaleString('en-GB')} • {log.performedBy?.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!metricsData.recentActivity || metricsData.recentActivity.length === 0) && (
+                    <p className="text-slate-500 text-sm font-mono text-center mt-10">No recent activity detected.</p>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -142,15 +175,24 @@ export default function AdminDashboard() {
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
             <h3 className="text-xl font-bold text-white mb-6">Health Diagnostics</h3>
             <div className="space-y-4">
-              {metricsData.conditionBreakdown?.map(cond => {
-                const condTab = ['Scrapped', 'Under Repair'].includes(cond._id) ? 'Repair' : 'Fixed';
-                return (
-                  <Link to={`/admin/inventory?tab=${condTab}&condition=${encodeURIComponent(cond._id)}`} key={cond._id} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 hover:bg-white/5 transition-all rounded-xl cursor-pointer group">
-                    <span className="font-bold text-slate-300 group-hover:text-white transition-colors">{cond._id || 'Unknown'}</span>
-                    <span className="text-lg font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg">{cond.count}</span>
-                  </Link>
-                );
-              })}
+              {isLoading ? (
+                Array(3).fill(0).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-xl animate-pulse">
+                    <div className="w-24 h-5 bg-slate-700/50 rounded"></div>
+                    <div className="w-10 h-8 bg-slate-700/50 rounded-lg"></div>
+                  </div>
+                ))
+              ) : (
+                metricsData.conditionBreakdown?.map(cond => {
+                  const condTab = ['Scrapped', 'Under Repair'].includes(cond._id) ? 'Repair' : 'Fixed';
+                  return (
+                    <Link to={`/admin/inventory?tab=${condTab}&condition=${encodeURIComponent(cond._id)}`} key={cond._id} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 hover:bg-white/5 transition-all rounded-xl cursor-pointer group">
+                      <span className="font-bold text-slate-300 group-hover:text-white transition-colors">{cond._id || 'Unknown'}</span>
+                      <span className="text-lg font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg">{cond.count}</span>
+                    </Link>
+                  );
+                })
+              )}
               {(!metricsData.conditionBreakdown || metricsData.conditionBreakdown.length === 0) && (
                 <p className="text-slate-500 text-sm font-mono text-center mt-10">No diagnostic data available.</p>
               )}

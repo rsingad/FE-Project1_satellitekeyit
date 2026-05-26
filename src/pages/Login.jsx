@@ -14,11 +14,6 @@ const Login = () => {
   const navigate = useNavigate();
   const backgroundRef = useRef(null);
 
-  useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
 
   // GSAP Background Animation
   useEffect(() => {

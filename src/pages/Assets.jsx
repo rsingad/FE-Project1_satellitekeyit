@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { PackageSearch, Laptop, Smartphone, Monitor, Plus, Send, X, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { PackageSearch, Laptop, Smartphone, Monitor, Plus, Send, X, AlertCircle, CheckCircle2, ShieldCheck, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 
@@ -14,7 +14,7 @@ const Assets = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const backgroundRef = useRef(null);
-  
+
   // Request Modal State
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestAsset, setRequestAsset] = useState(null);
@@ -79,14 +79,46 @@ const Assets = () => {
     }
   };
 
+  // Search and Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('All');
+
   const container = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } }
   };
   const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } };
 
+  // Data Filtering
   const myAssets = allAssets.filter(a => a.assignedTo?._id === user._id);
-  const catalogAssets = allAssets; 
+  const catalogAssets = allAssets;
+
+  const filterAssets = (assetsToFilter) => {
+    return assetsToFilter.filter(asset => {
+      const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (asset.description && asset.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (asset.serialNumber && asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesType = filterType === 'All' || asset.type === filterType;
+      return matchesSearch && matchesType;
+    });
+  };
+
+  const filteredMyAssets = filterAssets(myAssets);
+  const filteredCatalogAssets = filterAssets(catalogAssets);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, activeTab]);
+
+  const paginatedMyAssets = filteredMyAssets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedCatalogAssets = filteredCatalogAssets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  const totalPagesMyAssets = Math.max(1, Math.ceil(filteredMyAssets.length / itemsPerPage));
+  const totalPagesCatalog = Math.max(1, Math.ceil(filteredCatalogAssets.length / itemsPerPage));
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -100,7 +132,7 @@ const Assets = () => {
 
   return (
     <div ref={backgroundRef} className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-cyan-500/30 overflow-hidden relative">
-      
+
       {/* Background Ambience */}
       <div className="blob1 absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
       <div className="blob2 absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
@@ -108,7 +140,7 @@ const Assets = () => {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] opacity-30 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-6 relative z-10">
-        
+
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -132,9 +164,8 @@ const Assets = () => {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`relative px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ease-out outline-none ${
-                  activeTab === tab ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                }`}
+                className={`relative px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ease-out outline-none ${activeTab === tab ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  }`}
               >
                 {activeTab === tab && (
                   <motion.div
@@ -149,36 +180,79 @@ const Assets = () => {
           </div>
         </motion.div>
 
-        {/* Content Area */}
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="relative w-24 h-24">
-              <div className="absolute inset-0 border-4 border-t-cyan-400 border-r-purple-500 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-              <div className="absolute inset-2 border-4 border-l-cyan-400 border-b-purple-500 border-t-transparent border-r-transparent rounded-full animate-[spin_1.5s_linear_infinite_reverse]"></div>
+        {/* Controls: Search & Filter */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search assets by name, serial number, or description..."
+              className="w-full pl-11 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner font-mono"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="relative min-w-[200px]">
+            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <select
+              className="w-full appearance-none pl-11 pr-8 py-3 bg-black/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all cursor-pointer shadow-inner"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="All" className="bg-slate-900">All Asset Types</option>
+              <option value="Non-Consumable" className="bg-slate-900">Hardware (Non-Consumable)</option>
+              <option value="Consumable" className="bg-slate-900">Accessories (Consumable)</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
           </div>
+        </motion.div>
+
+        {/* Content Area */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(n => (
+              <div key={n} className="bg-white/5 border border-white/10 rounded-2xl p-6 h-[280px] flex flex-col animate-pulse relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-bl-full -z-10 blur-xl"></div>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-white/10"></div>
+                  <div className="w-16 h-6 rounded-full bg-white/10"></div>
+                </div>
+                <div className="w-3/4 h-6 bg-white/10 rounded mb-3"></div>
+                <div className="w-full h-4 bg-white/5 rounded mb-2"></div>
+                <div className="w-2/3 h-4 bg-white/5 rounded mb-6"></div>
+                <div className="mt-auto pt-4 border-t border-white/5">
+                  <div className="flex justify-between items-center">
+                    <div className="w-20 h-3 bg-white/10 rounded"></div>
+                    <div className="w-24 h-5 bg-white/5 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : activeTab === 'My Assigned Hardware' ? (
-          myAssets.length === 0 ? (
+          filteredMyAssets.length === 0 ? (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-16 text-center max-w-3xl mx-auto mt-12 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] -z-10"></div>
               <div className="mx-auto w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-[0_0_20px_rgba(34,211,238,0.1)] mb-6">
                 <Laptop className="h-10 w-10 text-cyan-400/50" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No Hardware Detected</h3>
+              <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No Results Found</h3>
               <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
-                You do not currently have any registered hardware assets assigned to your identity. Browse the Company Catalog to submit a requisition.
+                No assigned hardware matches your current search or filter criteria.
               </p>
             </motion.div>
           ) : (
             <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myAssets.map(asset => (
-                <motion.div 
+              {paginatedMyAssets.map(asset => (
+                <motion.div
                   variants={item}
-                  key={asset._id} 
+                  key={asset._id}
                   className="group relative overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_10px_30px_-10px_rgba(34,211,238,0.2)] hover:-translate-y-1"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-full -z-10 blur-xl transition-transform duration-500 group-hover:scale-150"></div>
-                  
+
                   <div className="flex justify-between items-start mb-6">
                     <div className="bg-cyan-500/20 p-3 rounded-xl border border-cyan-500/30 text-cyan-400 group-hover:scale-110 transition-transform duration-300">
                       <Laptop size={24} />
@@ -187,14 +261,14 @@ const Assets = () => {
                       {asset.status}
                     </span>
                   </div>
-                  
+
                   <h4 className="font-bold text-xl text-white mb-1.5 tracking-tight">{asset.name}</h4>
                   <p className="text-slate-400 text-sm mb-6 line-clamp-2 leading-relaxed">{asset.description || 'Standard company issue.'}</p>
-                  
+
                   <div className="space-y-3 mt-6 pt-4 border-t border-white/5">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Serial Number</span>
-                      <span className="font-mono text-cyan-100 bg-black/40 px-2 py-1 rounded border border-white/5">{asset.serialNumber}</span>
+                      <span className="font-mono text-cyan-100 bg-black/40 px-2 py-1 rounded border border-white/5">{asset.serialNumber || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500 text-xs uppercase tracking-wider font-bold">Condition</span>
@@ -209,47 +283,89 @@ const Assets = () => {
             </motion.div>
           )
         ) : (
-          <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {catalogAssets.map(asset => (
-              <motion.div 
-                variants={item}
-                key={asset._id} 
-                className="group relative overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_10px_30px_-10px_rgba(99,102,241,0.2)] hover:-translate-y-1 flex flex-col"
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-bl-full -z-10 blur-xl transition-transform duration-500 group-hover:scale-150"></div>
-                
-                <div className="flex justify-between items-start mb-4">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md border ${asset.type === 'Consumable' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'}`}>
-                    {asset.type}
-                  </span>
-                  {asset.type === 'Consumable' && (
-                    <span className="text-xs font-semibold text-slate-400 bg-black/40 px-2 py-1 rounded-md border border-white/5">
-                      Stock: <span className={asset.quantity > 0 ? "text-emerald-400" : "text-rose-400"}>{asset.quantity}</span>
-                    </span>
-                  )}
-                </div>
-                
-                <h4 className="font-bold text-xl text-white mb-1.5 tracking-tight">{asset.name}</h4>
-                <p className="text-slate-400 text-sm mb-6 leading-relaxed flex-1">{asset.description || 'Standard company issue.'}</p>
-                
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => openRequestModal(asset)}
-                  disabled={asset.type === 'Consumable' && asset.quantity <= 0}
-                  className="w-full mt-auto flex items-center justify-center gap-2 py-3 px-4 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-semibold hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn relative overflow-hidden"
+          filteredCatalogAssets.length === 0 ? (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-16 text-center max-w-3xl mx-auto mt-12 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -z-10"></div>
+              <div className="mx-auto w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-[0_0_20px_rgba(99,102,241,0.1)] mb-6">
+                <PackageSearch className="h-10 w-10 text-indigo-400/50" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No Catalog Assets Found</h3>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
+                No catalog assets match your current search or filter criteria. Please try adjusting your search terms.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedCatalogAssets.map(asset => (
+                <motion.div
+                  variants={item}
+                  key={asset._id}
+                  className="group relative overflow-hidden bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_10px_30px_-10px_rgba(99,102,241,0.2)] hover:-translate-y-1 flex flex-col"
                 >
-                  <div className="absolute inset-0 -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0" />
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Plus size={16} className="text-cyan-400" />
-                    {asset.type === 'Consumable' && asset.quantity <= 0 ? 'Depleted' : 'Requisition'}
-                  </span>
-                </motion.button>
-              </motion.div>
-            ))}
-          </motion.div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-bl-full -z-10 blur-xl transition-transform duration-500 group-hover:scale-150"></div>
+
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md border ${asset.type === 'Consumable' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'}`}>
+                      {asset.type}
+                    </span>
+                    {asset.type === 'Consumable' && (
+                      <span className="text-xs font-semibold text-slate-400 bg-black/40 px-2 py-1 rounded-md border border-white/5">
+                        Stock: <span className={asset.quantity > 0 ? "text-emerald-400" : "text-rose-400"}>{asset.quantity}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="font-bold text-xl text-white mb-1.5 tracking-tight">{asset.name}</h4>
+                  <p className="text-slate-400 text-sm mb-6 leading-relaxed flex-1">{asset.description || 'Standard company issue.'}</p>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => openRequestModal(asset)}
+                    disabled={asset.type === 'Consumable' && asset.quantity <= 0}
+                    className="w-full mt-auto flex items-center justify-center gap-2 py-3 px-4 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent z-0" />
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Plus size={16} className="text-cyan-400" />
+                      {asset.type === 'Consumable' && asset.quantity <= 0 ? 'Depleted' : 'Requisition'}
+                    </span>
+                  </motion.button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )
+        )}
+        
+        {/* Pagination Controls */}
+        {!loading && ((activeTab === 'My Assigned Hardware' && totalPagesMyAssets > 1) || (activeTab === 'Company Catalog' && totalPagesCatalog > 1)) && (
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-white/10 bg-black/20 gap-4 mt-6 rounded-2xl">
+            <span className="text-xs text-slate-400 font-mono">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, activeTab === 'My Assigned Hardware' ? filteredMyAssets.length : filteredCatalogAssets.length)} of {activeTab === 'My Assigned Hardware' ? filteredMyAssets.length : filteredCatalogAssets.length} entries
+            </span>
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(p => p - 1)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs font-bold text-cyan-400 px-3 bg-cyan-500/10 border border-cyan-500/20 py-1 rounded-lg">
+                {currentPage} / {activeTab === 'My Assigned Hardware' ? totalPagesMyAssets : totalPagesCatalog}
+              </span>
+              <button 
+                disabled={currentPage === (activeTab === 'My Assigned Hardware' ? totalPagesMyAssets : totalPagesCatalog)} 
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
+
 
       {/* Cyberpunk Request Modal */}
       <AnimatePresence>
@@ -262,7 +378,7 @@ const Assets = () => {
               onClick={() => setIsRequestModalOpen(false)}
               className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
-            
+
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -271,9 +387,9 @@ const Assets = () => {
               className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] w-full max-w-lg rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-indigo-500/30"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500"></div>
-              
+
               <div className="p-6 sm:p-8 relative z-10">
-                <button 
+                <button
                   onClick={() => setIsRequestModalOpen(false)}
                   className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
                 >

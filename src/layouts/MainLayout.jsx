@@ -41,7 +41,7 @@ const MainLayout = () => {
         <div className="absolute top-[-10%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-indigo-600/5 blur-[120px] -z-10 pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-600/5 blur-[130px] -z-10 pointer-events-none" />
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative z-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
           <Outlet />
         </div>
       </main>

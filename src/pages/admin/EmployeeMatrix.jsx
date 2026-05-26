@@ -3,12 +3,16 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
-import { Users, ShieldCheck, UserCheck, Database, Mail, MonitorSmartphone } from 'lucide-react';
+import { Users, ShieldCheck, UserCheck, Database, Mail, MonitorSmartphone, Search, Filter, ChevronDown, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import gsap from 'gsap';
 
 export default function EmployeeMatrix() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
   const backgroundRef = useRef(null);
 
   // GSAP Background Animation
@@ -34,6 +38,28 @@ export default function EmployeeMatrix() {
     fetchMatrix();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter]);
+
+  let processedEmployees = employees;
+
+  if (roleFilter !== 'All') {
+    processedEmployees = processedEmployees.filter(emp => (emp.role || 'Employee') === roleFilter);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    processedEmployees = processedEmployees.filter(emp => 
+      emp.name?.toLowerCase().includes(q) ||
+      emp.email?.toLowerCase().includes(q) ||
+      emp.id?.toLowerCase().includes(q)
+    );
+  }
+
+  const totalPages = Math.max(1, Math.ceil(processedEmployees.length / itemsPerPage));
+  const paginatedEmployees = processedEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div ref={backgroundRef} className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-rose-500/30 overflow-hidden relative">
       {/* Background Ambience */}
@@ -55,31 +81,55 @@ export default function EmployeeMatrix() {
           </p>
         </div>
 
+        {/* Search & Filter Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+            <div className="relative w-full lg:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search by name, email, or ID..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-black/40 border border-white/10 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+              />
+            </div>
+            
+            <div className="relative w-full sm:w-auto z-20">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="w-full appearance-none pl-10 pr-8 py-2 bg-black/40 border border-white/10 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all cursor-pointer"
+              >
+                <option value="All" className="bg-slate-900">All Roles</option>
+                <option value="Admin" className="bg-slate-900">Level 3: Admin</option>
+                <option value="Manager" className="bg-slate-900">Level 2: Manager</option>
+                <option value="Employee" className="bg-slate-900">Level 1: Employee</option>
+              </select>
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 border-4 border-t-rose-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
             </div>
           </div>
+        ) : processedEmployees.length === 0 ? (
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-16 text-center shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+            <Inbox className="mx-auto h-12 w-12 text-slate-600 mb-4 opacity-50" />
+            <p className="font-mono text-sm text-slate-500">No personnel records found matching your criteria.</p>
+          </div>
         ) : (
-          ['Admin', 'Manager', 'Employee'].map(roleGroup => {
-            const roleUsers = employees.filter(emp => (emp.role || 'Employee').toLowerCase() === roleGroup.toLowerCase());
-            
-            if (roleUsers.length === 0) return null;
-
-            return (
-              <div key={roleGroup} className="mb-16">
-                <h2 className="text-xl font-bold text-slate-300 mb-6 flex items-center gap-3 border-b border-white/10 pb-4">
-                  {roleGroup === 'Admin' ? <ShieldCheck className="text-rose-500" size={24} /> : 
-                   roleGroup === 'Manager' ? <UserCheck className="text-cyan-500" size={24} /> : 
-                   <Users className="text-indigo-500" size={24} />}
-                  <span className="uppercase tracking-widest">{roleGroup === 'Admin' ? 'Level 3: Administrators' : roleGroup === 'Manager' ? 'Level 2: Managers' : 'Level 1: Operatives'}</span>
-                  <span className="text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10 px-2 py-0.5 rounded-full ml-auto shadow-inner">{roleUsers.length}</span>
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {roleUsers.map((emp, idx) => (
-                    <Link to={`/admin/staff/${emp.id}`} key={emp.id}>
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+              {paginatedEmployees.map((emp, idx) => {
+                const roleGroup = emp.role || 'Employee';
+                return (
+                  <Link to={`/admin/staff/${emp.id}`} key={emp.id}>
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -112,9 +162,9 @@ export default function EmployeeMatrix() {
                             </div>
                           </div>
                           <span className={`px-2 py-1 text-[9px] uppercase tracking-widest font-black rounded border ${
-                            emp.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            emp.status === 'Online' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-slate-500/10 text-slate-400 border-slate-500/30'
                           }`}>
-                            {emp.status || 'Active'}
+                            {emp.status}
                           </span>
                         </div>
 
@@ -167,12 +217,39 @@ export default function EmployeeMatrix() {
                           )}
                         </div>
                       </motion.div>
-                    </Link>
-                  ))}
+                  </Link>
+                );
+              })}
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl gap-4 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                <span className="text-xs text-slate-400 font-mono">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, processedEmployees.length)} of {processedEmployees.length} personnel
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    disabled={currentPage === 1} 
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-bold text-rose-400 px-3 bg-rose-500/10 border border-rose-500/20 py-1 rounded-lg">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
-            );
-          })
+            )}
+          </div>
         )}
       </div>
     </div>

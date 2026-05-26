@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown, CalendarClock, ShieldAlert, Cpu } from 'lucide-react';
+import { Send, Check, X, Undo2, Clock, Inbox, ChevronDown, CalendarClock, ShieldAlert, Cpu, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 
@@ -11,7 +11,12 @@ const Requests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [allAssets, setAllAssets] = useState([]);
   const [availableAssets, setAvailableAssets] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const backgroundRef = useRef(null);
 
   const [newReq, setNewReq] = useState({
@@ -52,9 +57,20 @@ const Requests = () => {
   const fetchAvailableAssets = async () => {
     try {
       const { data } = await api.get('/assets');
+      setAllAssets(data);
       setAvailableAssets(data.filter(a => a.type === 'Non-Consumable' && a.status === 'Available'));
     } catch (error) {
-      console.error('Failed to fetch assets for dropdown');
+      console.error('Failed to fetch assets');
+    }
+  };
+
+  const getAvailableStock = (assetName, assetType) => {
+    if (!allAssets.length) return '...';
+    if (assetType === 'Consumable') {
+      const item = allAssets.find(a => a.name === assetName && a.type === 'Consumable');
+      return item ? item.quantity : 0;
+    } else {
+      return allAssets.filter(a => a.name === assetName && a.type === 'Non-Consumable' && a.status === 'Available').length;
     }
   };
 
@@ -77,14 +93,12 @@ const Requests = () => {
     e.preventDefault();
     const payload = {};
 
-    if (reqType === 'Non-Consumable') {
-      const selectEl = e.target.elements.assetSelect;
-      if (selectEl) {
-        if (!selectEl.value) {
-          return toast.error('Please select an asset ID to assign');
-        }
-        payload.assignedAssetId = selectEl.value;
+    const selectEl = e.target.elements.assetSelect;
+    if (selectEl) {
+      if (!selectEl.value) {
+        return toast.error('Please select an item to assign');
       }
+      payload.assignedAssetId = selectEl.value;
     }
 
     try {
@@ -145,9 +159,31 @@ const Requests = () => {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  let processedRequests = requests;
+
+  if (statusFilter !== 'All') {
+    processedRequests = processedRequests.filter(req => req.status === statusFilter);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    processedRequests = processedRequests.filter(req =>
+      req.assetName?.toLowerCase().includes(q) ||
+      req.requester?.name?.toLowerCase().includes(q) ||
+      req.requester?.email?.toLowerCase().includes(q)
+    );
+  }
+
+  const totalPages = Math.max(1, Math.ceil(processedRequests.length / itemsPerPage));
+  const paginatedRequests = processedRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div ref={backgroundRef} className="min-h-screen bg-[#030014] text-slate-200 p-4 sm:p-6 lg:p-8 selection:bg-cyan-500/30 overflow-hidden relative">
-      
+
       {/* Background Ambience */}
       <div className="blob1 absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
       <div className="blob2 absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-900/10 blur-[120px] pointer-events-none" />
@@ -155,7 +191,7 @@ const Requests = () => {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)] opacity-30 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-6 relative z-10">
-        
+
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -170,7 +206,7 @@ const Requests = () => {
               {user?.role === 'Employee' ? 'Track and manage your asset requests.' : 'Review and process clearance requests.'}
             </p>
           </div>
-          
+
           {user?.role === 'Employee' && (
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: "0px 0px 20px rgba(6, 182, 212, 0.3)" }}
@@ -183,6 +219,39 @@ const Requests = () => {
             </motion.button>
           )}
         </motion.div>
+
+        {/* Search & Filter Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+            <div className="relative w-full lg:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search by asset, name, or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-black/40 border border-white/10 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+              />
+            </div>
+
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full appearance-none pl-10 pr-8 py-2 bg-black/40 border border-white/10 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all cursor-pointer"
+              >
+                <option value="All" className="bg-slate-900">All Statuses</option>
+                <option value="Pending" className="bg-slate-900">Pending</option>
+                <option value="Approved" className="bg-slate-900">Approved</option>
+                <option value="Rejected" className="bg-slate-900">Rejected</option>
+                <option value="Pending Return" className="bg-slate-900">Pending Return</option>
+                <option value="Returned" className="bg-slate-900">Returned</option>
+              </select>
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -198,31 +267,32 @@ const Requests = () => {
             className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] relative"
           >
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white/[0.02] border-b border-white/10 text-slate-400 text-xs uppercase tracking-widest font-bold">
-                    <th className="p-5 font-mono">Timeline / Dates</th>
-                    {user?.role !== 'Employee' && <th className="p-5 font-mono">Identity</th>}
-                    <th className="p-5 font-mono">Asset Target</th>
-                    <th className="p-5 font-mono">Type / Qty</th>
-                    <th className="p-5 font-mono">Clearance Status</th>
-                    <th className="p-5 text-right font-mono">Directives</th>
+                    <th className="px-3 py-4 font-mono">Timeline / Dates</th>
+                    {user?.role !== 'Employee' && <th className="px-3 py-4 font-mono">Identity</th>}
+                    <th className="px-3 py-4 font-mono">Asset Target</th>
+                    <th className="px-3 py-4 font-mono">Type / Qty</th>
+                    {user?.role !== 'Employee' && <th className="px-3 py-4 font-mono">Current Stock</th>}
+                    <th className="px-3 py-4 font-mono">Clearance Status</th>
+                    <th className="px-3 py-4 text-right font-mono">Directives</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {requests.length === 0 ? (
+                  {paginatedRequests.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="p-16 text-center text-slate-500">
                         <Inbox className="mx-auto h-12 w-12 text-slate-600 mb-4 opacity-50" />
-                        <p className="font-mono text-sm">No authorization logs found in registry.</p>
+                        <p className="font-mono text-sm">No requests found matching your criteria.</p>
                       </td>
                     </tr>
                   ) : (
-                    requests.map((req) => (
+                    paginatedRequests.map((req) => (
                       <tr key={req._id} className="hover:bg-white/[0.02] transition-colors group">
-                        <td className="p-5 whitespace-nowrap text-slate-300 text-xs font-mono space-y-1.5">
+                        <td className="px-3 py-4 whitespace-nowrap text-slate-300 text-xs font-mono space-y-1.5">
                           <div className="flex items-center gap-2" title="Requested On">
                             <Clock size={12} className="text-cyan-500/50" />
                             Req: {new Date(req.requestDate).toLocaleDateString('en-GB')}
@@ -252,31 +322,44 @@ const Requests = () => {
                             </div>
                           )}
                         </td>
-                        
+
                         {user?.role !== 'Employee' && (
-                          <td className="p-5">
-                            <div className="font-bold text-white text-sm">{req.user?.name}</div>
-                            <div className="text-xs text-slate-500 font-mono">{req.user?.email}</div>
+                          <td className="px-3 py-4">
+                            <div className="font-bold text-white text-sm">{req.requester?.name || 'Unknown'}</div>
+                            <div className="text-xs text-slate-500 font-mono">{req.requester?.email || 'No email provided'}</div>
                           </td>
                         )}
-                        
-                        <td className="p-5">
+
+                        <td className="px-3 py-4">
                           <div className="font-bold text-slate-200">{req.assetName}</div>
-                          {req.assignedAssetId && (
-                            <div className="text-xs text-cyan-400 font-mono mt-1 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded inline-block">
-                              ID: {req.assignedAssetId.serialNumber || req.assignedAssetId}
+                          {(req.assignedAssetId || req.requestedAssetId) && (
+                            <div className="mt-1">
+                              <div className="text-[10px] text-cyan-400 font-mono px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded inline-block w-fit" title="Hardware/Asset ID">
+                                ASSET ID: {req.assignedAssetId?.serialNumber || req.assignedAssetId?._id || req.assignedAssetId || req.requestedAssetId?.serialNumber || req.requestedAssetId?._id || req.requestedAssetId}
+                              </div>
                             </div>
                           )}
                         </td>
-                        
-                        <td className="p-5">
+
+                        <td className="px-3 py-4">
                           <span className="text-xs text-slate-300 font-mono bg-white/5 px-2 py-1 rounded border border-white/10">
                             {req.assetType}
                           </span>
                           <span className="ml-2 text-sm text-slate-400 font-bold">x{req.quantity}</span>
                         </td>
-                        
-                        <td className="p-5">
+
+                        {user?.role !== 'Employee' && (
+                          <td className="px-3 py-4">
+                            <div className="inline-flex items-center justify-center bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg shadow-inner">
+                              <span className={`font-mono text-sm font-bold ${getAvailableStock(req.assetName, req.assetType) > 0 ? 'text-emerald-400' : 'text-rose-400'
+                                }`}>
+                                {getAvailableStock(req.assetName, req.assetType)}
+                              </span>
+                            </div>
+                          </td>
+                        )}
+
+                        <td className="px-3 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(req.status)} shadow-sm`}>
                             {req.status === 'Pending' && <Clock size={10} />}
                             {req.status === 'Approved' && <Check size={10} />}
@@ -284,34 +367,36 @@ const Requests = () => {
                             {req.status}
                           </span>
                         </td>
-                        
-                        <td className="p-5 text-right space-x-2">
+
+                        <td className="px-3 py-4 text-right space-x-2">
                           {(user?.role === 'Admin' || user?.role === 'Manager') && req.status === 'Pending' && (
                             <form onSubmit={(e) => handleApprove(req._id, req.assetType, e)} className="inline-flex items-center gap-2">
-                              {/* Only show "Link Hardware" if the user didn't request a specific asset from the catalog */}
-                              {req.assetType === 'Non-Consumable' && !req.requestedAssetId && (
-                                <div className="relative w-32">
-                                  <select 
-                                    name="assetSelect" 
+                              {/* Show Link Dropdown if not pre-linked */}
+                              {!req.requestedAssetId && (
+                                <div className="relative w-48">
+                                  <select
+                                    name="assetSelect"
                                     required
-                                    className="w-full appearance-none bg-black/40 border border-white/10 text-white text-xs px-2 py-1.5 rounded focus:ring-1 focus:ring-cyan-500 focus:outline-none"
+                                    className="w-full appearance-none bg-black/40 border border-white/10 text-white text-[11px] px-2 py-1.5 rounded focus:ring-1 focus:ring-cyan-500 focus:outline-none truncate"
                                     defaultValue=""
                                   >
-                                    <option value="" disabled>Link Hardware</option>
-                                    {availableAssets.map(a => (
-                                      <option key={a._id} value={a._id}>{a.serialNumber}</option>
-                                    ))}
+                                    <option value="" disabled>Link {req.assetType}...</option>
+                                    {allAssets
+                                      .filter(a => req.assetType === 'Consumable' ? a.type === 'Consumable' : (a.type === 'Non-Consumable' && a.status === 'Available'))
+                                      .map(a => (
+                                        <option key={a._id} value={a._id}>{a.name} {a.serialNumber ? `(SN: ${a.serialNumber})` : `(Stock: ${a.quantity})`}</option>
+                                      ))}
                                   </select>
                                   <ChevronDown size={12} className="absolute right-2 top-2 text-slate-500 pointer-events-none" />
                                 </div>
                               )}
                               {/* If requestedAssetId exists, show a badge indicating which asset will be approved */}
-                              {req.assetType === 'Non-Consumable' && req.requestedAssetId && (
+                              {req.requestedAssetId && (
                                 <div className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20" title="Auto-linking specific requested asset">
                                   Pre-Linked
                                 </div>
                               )}
-                              
+
                               <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} type="submit" className="p-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/20" title="Authorize">
                                 <Check size={16} />
                               </motion.button>
@@ -347,6 +432,34 @@ const Requests = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {!loading && totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-white/10 bg-black/20 gap-4">
+                <span className="text-xs text-slate-400 font-mono">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, processedRequests.length)} of {processedRequests.length} entries
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-bold text-cyan-400 px-3 bg-cyan-500/10 border border-cyan-500/20 py-1 rounded-lg">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-white/5"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
@@ -365,9 +478,9 @@ const Requests = () => {
               className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] w-full max-w-md rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-cyan-500/30"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-indigo-500"></div>
-              
+
               <div className="p-6 sm:p-8">
-                <button 
+                <button
                   onClick={() => setIsModalOpen(false)}
                   className="absolute top-6 right-6 p-2 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
                 >
